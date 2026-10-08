@@ -8,8 +8,45 @@
     needs: JSON.parse(JSON.stringify(D.needs)),
     impact: JSON.parse(localStorage.getItem('foodlink-impact') || '{"meals":0,"donations":0,"orgs":[]}'),
     draft: null, lang: 'en', filter: 'all', query: '',
-    chat: [], chatBusy: false
+    chat: [], chatBusy: false,
+    tour: { active: false, i: 0 }, openCard: null
   };
+
+  /* ---------- guided tour ---------- */
+  var EXAMPLE = '40 vegetarian prepared meals, refrigerated, need gone by 7pm';
+  var TOUR = [
+    { hash: 'home', text: '👋 This is the live food grid — surplus on one side, need on the other. Let\'s walk it in 7 quick steps.' },
+    { hash: 'donate', text: 'STEP 1 · Describe your food in one sentence — we typed an example for you. Then tap “Find where it should go”.', prefill: true },
+    { hash: 'match', text: 'STEP 2 · FoodLink checked every organization. Gated ones show WHY they were rejected. The top match is 82.4%. Tap “Connect →”.', ensureDraft: true },
+    { hash: 'receipt', text: 'STEP 3 · Done — an impact receipt: 48 lbs, $140.80 value, tax estimate. Every donation gets one automatically.', ensureDraft: true },
+    { hash: 'need', text: 'Now the household side — no login, no documents, honest cards. Tap any card for details; switch to Español.' },
+    { hash: 'sms', text: '💬 Any phone works — the assistant answers in any language. Try a quick-question chip below.' },
+    { hash: 'needs-board', text: '📢 Organizations post what they NEED — and the network exports its own open data. That\'s the whole grid. Tap Finish.' }
+  ];
+  function tourStart() { store.tour = { active: true, i: 0 }; location.hash = TOUR[0].hash; render(); }
+  function tourNext() {
+    var t = store.tour; t.i++;
+    if (t.i >= TOUR.length) { store.tour = { active: false, i: 0 }; location.hash = 'home'; render(); toast('🎉 That\'s the whole grid — explore freely!'); return; }
+    var step = TOUR[t.i];
+    if (step.ensureDraft && (!store.draft || store.draft.raw !== EXAMPLE)) {
+      var d = AI.parseDonation(EXAMPLE); d.attested = true; d.directOffer = false; store.draft = d;
+    }
+    if (step.prefill) store.tourPrefill = true; else store.tourPrefill = false;
+    if (location.hash === '#' + step.hash) render(); else location.hash = step.hash;
+  }
+  function tourBarHTML() {
+    var t = store.tour, step = TOUR[t.i];
+    if (!step) return '';
+    return '<div class="tourbar"><div class="tmeta">Tour ' + (t.i + 1) + '/' + TOUR.length +
+      (step.prefill ? ' · we filled the form for you' : '') + '</div><div class="ttext">' + esc(step.text) + '</div>' +
+      '<div class="tbtns"><button class="btn tbtn-exit" data-tour="exit">Exit</button>' +
+      '<button class="btn btn-primary tbtn-next" data-tour="next">' + (t.i === TOUR.length - 1 ? 'Finish ✓' : 'Next →') + '</button></div></div>';
+  }
+  function ensureDraftNow() {
+    if (!store.draft || store.draft.raw !== EXAMPLE) {
+      var d = AI.parseDonation(EXAMPLE); d.attested = true; d.directOffer = false; store.draft = d;
+    }
+  }
   function saveImpact() { localStorage.setItem('foodlink-impact', JSON.stringify(store.impact)); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -46,6 +83,7 @@
     '<small>The real-time food grid · Des Moines</small></div></div>' +
     '<a class="gear" href="#settings" title="AI settings">⚙️</a></div>' +
     '<span class="tag"><i></i>' + live + ' surplus · ' + store.needs.length + ' needs on the board right now</span>' +
+    '<a class="tourlink" data-tour-start="1">▶ New here? Take the 60-second tour</a>' +
     '<a class="btn-big btn-need" href="#need">🍅 I need food<span>Free food near you, today — no sign-up</span></a>' +
     '<a class="btn-big btn-have" href="#donate">🏪 I have food<span>Businesses &amp; organizations: post surplus in one sentence</span></a>' +
     '<div class="lane">💬 <div><b>Any phone, any language.</b> Chat with FoodLink — on a smartphone or a flip phone. ' +
@@ -58,8 +96,7 @@
     '<div class="meta" style="font-size:14px"><b style="font-size:22px;color:var(--green-700)">' + store.impact.meals +
     '</b> meals rescued · ' + store.impact.donations + (store.impact.donations === 1 ? ' donation' : ' donations') + ' · ' +
     E.impact(store.impact.meals).lbs + ' lbs diverted · $' + E.impact(store.impact.meals).value + ' in value</div></div></div>' +
-    '<p class="footnote">All organizations and listings are simulated for this demo — no real partnership is claimed.<br>' +
-    'Matching math: hard safety gates, then urgency .35 · distance .30 · capacity .20 · transport .15.</p>';
+    '<p class="footnote">All organizations and listings are simulated for this demo — no real partnership is claimed.</p>';
   };
 
   function gridHTML() {
@@ -108,7 +145,7 @@
   views.donate = function () {
     var d = store.draft;
     return '' +
-    '<a class="back" href="#home">← Home</a>' +
+    '<a class="back" href="#home">← Home</a>' + stepper(1) +
     '<h3 class="sec">Post surplus</h3>' +
     '<p class="sub">Type it like you\'d text a coworker. FoodLink does the rest.</p>' +
     '<textarea class="post" id="postText" placeholder="e.g. 40 vegetarian prepared meals, refrigerated, need gone by 7pm">' +
@@ -116,8 +153,8 @@
     '<div id="parseOut">' + (d ? parseHTML(d) : '<p class="ai-note">The assistant reads your note and pulls out food type, quantity, storage and deadline.</p>') + '</div>' +
     '<label class="check"><input type="checkbox" id="attest"> I attest this food has been held at safe temperatures ' +
     'and will be labeled for allergens.</label>' +
-    '<label class="check"><input type="checkbox" id="directOffer"> 🍽️ Also allow <b>direct delivery to a nearby household</b> ' +
-    'tonight — protected for donors by the federal Food Donation Improvement Act of 2023.</label>' +
+    '<label class="check"><input type="checkbox" id="directOffer"> 🍽️ Direct delivery to a nearby household tonight — ' +
+    'protected for donors by the Food Donation Improvement Act of 2023.</label>' +
     '<button class="btn btn-primary" id="findMatch" disabled>Find where it should go →</button>' +
     '<p class="ai-note" id="viaNote"></p>';
   };
@@ -148,7 +185,7 @@
     var best = ranked.filter(function (r) { return !r.gated; })[0];
     var rival = ranked.filter(function (r) { return !r.gated; })[1];
     if (best) best.vsRivalP = rival ? E.monteCarlo(best.factors, rival.factors, 20000) : 1;
-    var out = '<a class="back" href="#donate">← Edit post</a>' +
+    var out = '<a class="back" href="#donate">← Edit post</a>' + stepper(2) +
       '<h3 class="sec">Where your ' + d.qty + ' ' + esc(E.labelType(d.type)) + ' should go</h3>' +
       '<p class="sub">Ranked by the match score — math shown, nothing hidden.</p>';
     ranked.forEach(function (m, i) {
@@ -190,6 +227,13 @@
     return '<div class="bar"><span>' + label + '</span><div class="track"><div class="fill" style="width:' +
       Math.round(v * 100) + '%"></div></div><span>' + v.toFixed(2) + '</span></div>';
   }
+  function stepper(n) {
+    var labels = ['Describe it', 'Where it goes', 'Receipt'];
+    return '<div class="stepper">' + labels.map(function (l, i) {
+      return '<span class="s' + (i + 1 === n ? ' now' : i + 1 < n ? ' done' : '') + '">' +
+        (i + 1 < n ? '✓' : i + 1) + ' ' + l + '</span>';
+    }).join('<i>›</i>') + '</div>';
+  }
 
   /* ---------- receipt ---------- */
   views.receipt = function () {
@@ -197,7 +241,7 @@
     if (!d) { location.hash = '#home'; return ''; }
     var imp = E.impact(d.qty), tax = E.taxEstimate(d.qty), yr = E.taxEstimate(d.qty * 52);
     return '' +
-    '<a class="back" href="#home">← Home</a>' +
+    '<a class="back" href="#home">← Home</a>' + stepper(3) +
     '<h3 class="sec">Impact receipt</h3>' +
     '<p class="sub">Every donation closes the loop — for the business and the IRS.</p>' +
     '<div class="receipt" id="receiptCard">' +
@@ -234,13 +278,23 @@
       var lbl = l.deadlineMin <= 1440 ? I.t('today') + ' · ' + I.t('until') + ' ' + fmtTime(l.deadlineMin) : I.t('sat');
       var win = es ? (l.distribution.windowEs || l.distribution.window) : l.distribution.window;
       var note = es ? (l.distribution.noteEs || l.distribution.note) : l.distribution.note;
-      return '<div class="card"><span class="pill ' + (l.deadlineMin <= 1440 ? 'now' : 'ok') + '">' + lbl + '</span>' +
+      var isOpen = store.openCard === l.id;
+      var detail = isOpen
+        ? '<div class="card-detail">' +
+          (org ? '<div>🕒 ' + esc(org.hours) + (org.languages ? ' · 🗣 ' + org.languages.join('/').toUpperCase() : '') + '</div>' : '') +
+          (org && org.serves ? '<div>' + esc(org.serves) + '</div>' : '') +
+          '<div>🪪 ' + (es ? 'No se necesita ID aquí — las despensas usan auto-declaración.' : 'No ID needed here — pantries use self-attestation.') + '</div>' +
+          '<div>🎒 ' + (es ? 'Trae una bolsa.' : 'Bring a bag.') + '</div></div>'
+        : '';
+      return '<div class="card' + (isOpen ? ' open' : '') + '" data-expand="' + l.id + '" role="button">' +
+        '<span class="pill ' + (l.deadlineMin <= 1440 ? 'now' : 'ok') + '">' + lbl + '</span>' +
         '<div class="k">' + I.t(l.type) + '</div><h5>' + l.qty + ' ' + I.t(l.type) +
         (l.diet ? ' · ' + I.diet(l.diet) : '') + '</h5>' +
         '<div class="meta">📍 ' + mi + ' mi · ' + I.t('via') + ' ' + esc(l.distribution.org) +
         (openNow ? ' <span class="open-badge">● open now</span>' : '') + '</div>' +
-        (org && org.serves ? '<div class="meta">' + esc(org.serves) + (org.languages ? ' · ' + org.languages.join('/').toUpperCase() : '') + '</div>' : '') +
-        '<div class="honest">' + I.t('dist') + ': ' + esc(win) + (note ? ' · ' + esc(note) : '') + ' · <b>' + I.t('confirmed') + '</b></div></div>';
+        '<div class="honest">' + I.t('dist') + ': ' + esc(win) + (note ? ' · ' + esc(note) : '') + ' · <b>' + I.t('confirmed') + '</b></div>' +
+        detail +
+        '<div class="tap-hint">' + (isOpen ? (es ? '▲ tocar para cerrar' : '▲ tap to close') : (es ? '▼ tocar para detalles' : '▼ tap for details')) + '</div></div>';
     }).join('');
 
     var maxMi = 6.5, rail = D.orgs.filter(function (o) {
@@ -373,25 +427,68 @@
 
   /* ---------------- router ---------------- */
   views['needs-board'] = views.needsBoard; // tab href alias
+  var TAB_FOR = { match: 'donate', receipt: 'donate', how: null, settings: null };
   function render() {
     var h = location.hash.replace('#', '') || 'home';
     var parts = h.split('/'), name = parts[0];
     var fn = views[name] || views.home;
+    var tab = TAB_FOR[name] === undefined ? name : TAB_FOR[name];
     document.getElementById('app').innerHTML = fn();
     document.querySelectorAll('.tabbar a').forEach(function (a) {
-      a.classList.toggle('on', a.dataset.tab === name);
+      a.classList.toggle('on', a.dataset.tab === tab);
     });
     bind(name);
+    // first-run welcome
+    if (!localStorage.getItem('foodlink-seen') && !document.getElementById('welcome')) {
+      var w = document.createElement('div');
+      w.className = 'welcome'; w.id = 'welcome';
+      w.innerHTML = '<div class="wsheet"><div class="wlogo">🌽</div><h3>Welcome to FoodLink</h3>' +
+        '<p>La red de alimentos en tiempo real de Des Moines.<br>Two doors: <b>food you need</b> or <b>food you have</b> — the grid connects them in minutes.</p>' +
+        '<button class="btn btn-primary" data-w="tour">▶ Show me how it works (60 sec)</button>' +
+        '<button class="btn btn-ghost" data-w="need">🍅 I need food</button>' +
+        '<button class="btn btn-ghost" data-w="donate">🏪 I have food</button>' +
+        '<button class="wskip" data-w="skip">explore on my own →</button></div>';
+      document.body.appendChild(w);
+      w.querySelectorAll('[data-w]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          localStorage.setItem('foodlink-seen', '1'); w.remove();
+          if (b.dataset.w === 'tour') tourStart();
+          else if (b.dataset.w !== 'skip') location.hash = b.dataset.w;
+        });
+      });
+    }
+    // tour bar
+    var old = document.querySelector('.tourbar'); if (old) old.remove();
+    if (store.tour.active) {
+      var tb = document.createElement('div'); tb.innerHTML = tourBarHTML();
+      var bar = tb.firstChild; document.body.appendChild(bar);
+      bar.querySelectorAll('[data-tour]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (b.dataset.tour === 'next') tourNext();
+          else { store.tour = { active: false, i: 0 }; bar.remove(); toast('Tour ended — explore freely.'); }
+        });
+      });
+    }
     window.scrollTo(0, 0);
   }
 
   function bind(name) {
     var app = document.getElementById('app');
 
+    if (name === 'home') {
+      var tl = app.querySelector('[data-tour-start]');
+      if (tl) tl.addEventListener('click', tourStart);
+    }
+
     if (name === 'donate') {
       var txt = document.getElementById('postText'), find = document.getElementById('findMatch');
       var check = document.getElementById('attest'), out = document.getElementById('parseOut');
       var doffer = document.getElementById('directOffer');
+      if (store.tour.active && TOUR[store.tour.i] && TOUR[store.tour.i].prefill && !txt.value) {
+        txt.value = EXAMPLE; check.checked = true;
+        store.draft = AI.parseDonation(EXAMPLE); store.draft.attested = true;
+        out.innerHTML = parseHTML(store.draft);
+      }
       function refresh() { find.disabled = !(txt.value.trim().length > 4 && check.checked); }
       var deb;
       txt.addEventListener('input', function () {
@@ -436,6 +533,11 @@
       });
       app.querySelectorAll('[data-filter]').forEach(function (b) {
         b.addEventListener('click', function () { store.filter = b.dataset.filter; render(); });
+      });
+      app.querySelectorAll('[data-expand]').forEach(function (c) {
+        c.addEventListener('click', function () {
+          store.openCard = store.openCard === c.dataset.expand ? null : c.dataset.expand; render();
+        });
       });
       var s = document.getElementById('searchFood');
       if (s) { var deb2; s.addEventListener('input', function () {
