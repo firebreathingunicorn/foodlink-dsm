@@ -7,7 +7,8 @@
     listings: JSON.parse(JSON.stringify(D.listings)),
     needs: JSON.parse(JSON.stringify(D.needs)),
     impact: JSON.parse(localStorage.getItem('foodlink-impact') || '{"meals":0,"donations":0,"orgs":[]}'),
-    draft: null, lang: 'en', filter: 'all'
+    draft: null, lang: 'en', filter: 'all', query: '',
+    chat: [], chatBusy: false
   };
   function saveImpact() { localStorage.setItem('foodlink-impact', JSON.stringify(store.impact)); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -21,21 +22,31 @@
     document.body.appendChild(t); t.textContent = msg; t.classList.add('show');
     clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove('show'); }, 2600);
   }
+  function snapshot() { // live data handed to the AI
+    return {
+      availableNow: store.listings.map(function (l) {
+        return { food: l.qty + 'x ' + l.type + (l.diet ? ' (' + l.diet + ')' : ''),
+                 via: l.distribution.org, window: l.distribution.window, note: l.distribution.note };
+      }),
+      needsPosted: store.needs.map(function (n) { return n.org + ' needs ' + n.qty + ' ' + n.type + ' by ' + n.by; })
+    };
+  }
 
   /* ---------------- views ---------------- */
   var views = {};
 
   views.home = function () {
     var live = store.listings.filter(function (l) { return !l.claimedBy; }).length;
-    var claimed = store.listings.filter(function (l) { return l.claimedBy; }).length;
+    var am = AI.activeModel();
     return '' +
-    '<div class="brand"><div class="logo">🌽</div><div><b>FoodLink</b>' +
+    '<div class="toprow"><div class="brand"><div class="logo">🌽</div><div><b>FoodLink</b>' +
     '<small>The real-time food grid · Des Moines</small></div></div>' +
-    '<span class="tag"><i></i>' + (live + claimed) + ' listings on the board right now</span>' +
+    '<a class="gear" href="#settings" title="AI settings">⚙️</a></div>' +
+    '<span class="tag"><i></i>' + live + ' surplus · ' + store.needs.length + ' needs on the board right now</span>' +
     '<a class="btn-big btn-need" href="#need">🍅 I need food<span>Free food near you, today — no sign-up</span></a>' +
     '<a class="btn-big btn-have" href="#donate">🏪 I have food<span>Businesses &amp; organizations: post surplus in one sentence</span></a>' +
-    '<div class="lane">📱 <div><b>No smartphone? No problem.</b> Text <b>FOOD</b> to FoodLink — works on any phone, ' +
-    '<a href="#sms">see the live demo (' + (I.get() === 'es' ? 'en Español' : 'en Español too') + ')</a>.</div></div>' +
+    '<div class="lane">💬 <div><b>Any phone, any language.</b> Chat with FoodLink — on a smartphone or a flip phone. ' +
+    '<a href="#sms">Open the assistant</a>' + (am.live ? ' · <span class="ai-badge on">' + esc(am.model) + '</span>' : ' · <span class="ai-badge">offline demo mode</span>') + '</div></div>' +
     '<div class="gridmini"><h4>The Grid — live</h4>' + gridHTML() +
     '<div class="legend"><span><i style="background:var(--blue-600)"></i>surplus</span>' +
     '<span><i style="background:var(--red-600)"></i>need</span>' +
@@ -49,17 +60,48 @@
   };
 
   function gridHTML() {
-    var pts = [[14, 28, 's'], [24, 42, 'n'], [46, 14, 's'], [72, 62, 's'], [56, 76, 'n']];
+    var pts = [[14, 28, 's'], [24, 42, 'n'], [46, 14, 's'], [72, 62, 's'], [56, 76, 'n'], [84, 30, 'n']];
     var dx = (pts[1][0] - pts[0][0]) / 100 * 380, dy = (pts[1][1] - pts[0][1]) / 100 * 88;
     var line = '<div class="link-line" style="left:' + pts[0][0] + '%;top:' + pts[0][1] +
       '%;width:' + Math.sqrt(dx * dx + dy * dy).toFixed(0) + 'px;transform:rotate(' +
       (Math.atan2(dy, dx) * 180 / Math.PI).toFixed(1) + 'deg)"></div>';
-    var dots = pts.map(function (p) {
-      return '<div class="dot ' + p[2] + '" style="left:' + p[0] + '%;top:' + p[1] + '%"></div>';
+    var dots = pts.map(function (p, i) {
+      return '<div class="dot ' + p[2] + (i % 2 ? ' pulse' : '') + '" style="left:' + p[0] + '%;top:' + p[1] + '%"></div>';
     }).join('');
     return '<div class="dots">' + line + dots + '</div>';
   }
 
+  /* ---------- settings (AI provider) ---------- */
+  views.settings = function () {
+    var c = AI.getConfig(), am = AI.activeModel();
+    var opts = Object.keys(AI.DEFAULTS).map(function (p) {
+      return '<option value="' + p + '"' + (c.provider === p ? ' selected' : '') + '>' + AI.DEFAULTS[p].label + '</option>';
+    }).join('');
+    return '' +
+    '<a class="back" href="#home">← Home</a>' +
+    '<h3 class="sec">AI engine</h3>' +
+    '<p class="sub">FoodLink runs on free, open-source-friendly AI — or on built-in templates when no AI is configured. The demo never dies offline.</p>' +
+    '<div class="card"><div class="k">Provider</div>' +
+    '<select class="txt" id="aiProvider" style="margin-top:8px">' + opts + '</select>' +
+    '<div id="aiKeyRow" style="' + (c.provider === 'template' || c.provider === 'ollama' ? 'display:none;' : '') + 'margin-top:10px">' +
+    '<div class="k">API key (free — paste yours)</div>' +
+    '<input class="txt" id="aiKey" type="password" placeholder="paste key" value="' + esc(c.key) + '" style="margin-top:6px">' +
+    '</div>' +
+    '<div id="aiModelRow" style="margin-top:10px"><div class="k">Model (optional)</div>' +
+    '<input class="txt" id="aiModel" placeholder="' + esc(AI.DEFAULTS[c.provider].model || '') + '" value="' + esc(c.model) + '" style="margin-top:6px"></div>' +
+    '<button class="btn btn-primary" id="aiSave">Save &amp; test connection</button>' +
+    '<div id="aiStatus" class="ai-note">Currently: <b>' + esc(am.label) + (am.model ? ' · ' + esc(am.model) : '') + '</b></div>' +
+    '</div>' +
+    '<div class="card"><div class="k">Free options (no credit card)</div>' +
+    '<div class="meta" style="margin-top:6px;line-height:1.7">' +
+    '• <b>Ollama</b> — open-source models, 100% local, zero cost: <code>OLLAMA_ORIGINS=* ollama serve</code><br>' +
+    '• <b>Groq</b> — free API key at console.groq.com<br>' +
+    '• <b>Gemini</b> — free key at aistudio.google.com<br>' +
+    '• <b>OpenRouter</b> — free models at openrouter.ai<br>' +
+    '• No AI? Everything still works — parsing falls back to FoodLink\'s built-in templates.</div></div>';
+  };
+
+  /* ---------- donate ---------- */
   views.donate = function () {
     var d = store.draft;
     return '' +
@@ -68,15 +110,15 @@
     '<p class="sub">Type it like you\'d text a coworker. FoodLink does the rest.</p>' +
     '<textarea class="post" id="postText" placeholder="e.g. 40 vegetarian prepared meals, refrigerated, need gone by 7pm">' +
     esc(d ? d.raw : '') + '</textarea>' +
-    '<div id="parseOut">' + (d ? parseHTML(d) : '') + '</div>' +
+    '<div id="parseOut">' + (d ? parseHTML(d) : '<p class="ai-note">The assistant reads your note and pulls out food type, quantity, storage and deadline.</p>') + '</div>' +
     '<label class="check"><input type="checkbox" id="attest"> I attest this food has been held at safe temperatures ' +
     'and will be labeled for allergens.</label>' +
     '<button class="btn btn-primary" id="findMatch" disabled>Find where it should go →</button>' +
-    '<p class="ai-note">Parsed by FoodLink\'s assistant (template parser — works offline; an LLM hook can be enabled).</p>';
+    '<p class="ai-note" id="viaNote"></p>';
   };
 
   function parseHTML(d) {
-    return '<div class="parsed"><b>✓ FoodLink parsed your note</b>' +
+    return '<div class="parsed"><b>✓ FoodLink read your note' + (d.via && d.via !== 'template' ? ' (AI: ' + esc(d.via) + ')' : '') + '</b>' +
       '<span class="chip">🍱 ' + esc(E.labelType(d.type)) + '</span>' +
       '<span class="chip">× ' + d.qty + '</span>' +
       '<span class="chip">' + (d.storage === 'refrigerated' ? '❄️' : d.storage === 'frozen' ? '🧊' : '📦') + ' ' + d.storage + '</span>' +
@@ -84,7 +126,8 @@
       '<span class="chip">⏰ ' + esc(d.deadlineLabel) + '</span></div>';
   }
 
-  views.match = function (id) {
+  /* ---------- match ---------- */
+  views.match = function () {
     var d = store.draft;
     if (!d) { location.hash = '#donate'; return ''; }
     var ranked = E.rank(D.orgs, d);
@@ -92,7 +135,7 @@
     var rival = ranked.filter(function (r) { return !r.gated; })[1];
     if (best) best.vsRivalP = rival ? E.monteCarlo(best.factors, rival.factors, 20000) : 1;
     var out = '<a class="back" href="#donate">← Edit post</a>' +
-      '<h3 class="sec">Where your ' + d.qty + ' ' + esc(E.labelType(d.type)).replace(/s$/, '') + (d.qty > 1 ? 's' : '') + ' should go</h3>' +
+      '<h3 class="sec">Where your ' + d.qty + ' ' + esc(E.labelType(d.type)) + ' should go</h3>' +
       '<p class="sub">Ranked by the match score — math shown, nothing hidden.</p>';
     ranked.forEach(function (m, i) {
       if (m.gated) {
@@ -122,7 +165,8 @@
       Math.round(v * 100) + '%"></div></div><span>' + v.toFixed(2) + '</span></div>';
   }
 
-  views.receipt = function (id) {
+  /* ---------- receipt ---------- */
+  views.receipt = function () {
     var d = store.draft;
     if (!d) { location.hash = '#home'; return ''; }
     var imp = E.impact(d.qty), tax = E.taxEstimate(d.qty), yr = E.taxEstimate(d.qty * 52);
@@ -147,50 +191,90 @@
     '<a class="btn btn-ghost" href="#need">See what households see →</a>';
   };
 
+  /* ---------- find food (household) — richer ---------- */
   views.need = function () {
+    var es = I.get() === 'es';
+    var q = store.query.toLowerCase();
     var cards = store.listings.filter(function (l) {
       if (store.filter === 'today' && l.deadlineMin > 1440) return false;
       if (store.filter === 'veg' && l.diet !== 'vegetarian') return false;
+      if (q && (l.type + ' ' + l.diet + ' ' + l.distribution.org + ' ' + l.distribution.window).toLowerCase().indexOf(q) === -1) return false;
       return true;
     }).map(function (l) {
       var org = D.orgs.find(function (o) { return o.name === l.distribution.org; });
       var mi = org ? org.miles : 1.4;
-      var es = I.get() === 'es';
+      var openNow = org && org.nextReceiveMin === 0;
       var lbl = l.deadlineMin <= 1440 ? I.t('today') + ' · ' + I.t('until') + ' ' + fmtTime(l.deadlineMin) : I.t('sat');
       var win = es ? (l.distribution.windowEs || l.distribution.window) : l.distribution.window;
       var note = es ? (l.distribution.noteEs || l.distribution.note) : l.distribution.note;
       return '<div class="card"><span class="pill ' + (l.deadlineMin <= 1440 ? 'now' : 'ok') + '">' + lbl + '</span>' +
         '<div class="k">' + I.t(l.type) + '</div><h5>' + l.qty + ' ' + I.t(l.type) +
         (l.diet ? ' · ' + I.diet(l.diet) : '') + '</h5>' +
-        '<div class="meta">📍 ' + mi + ' mi · ' + I.t('via') + ' ' + esc(l.distribution.org) + '</div>' +
+        '<div class="meta">📍 ' + mi + ' mi · ' + I.t('via') + ' ' + esc(l.distribution.org) +
+        (openNow ? ' <span class="open-badge">● open now</span>' : '') + '</div>' +
+        (org && org.serves ? '<div class="meta">' + esc(org.serves) + (org.languages ? ' · ' + org.languages.join('/').toUpperCase() : '') + '</div>' : '') +
         '<div class="honest">' + I.t('dist') + ': ' + esc(win) + (note ? ' · ' + esc(note) : '') + ' · <b>' + I.t('confirmed') + '</b></div></div>';
     }).join('');
+
+    var maxMi = 6.5, rail = D.orgs.filter(function (o) {
+      return store.listings.some(function (l) { return l.distribution.org === o.name && !l.claimedBy; }) ||
+             o.needLevel >= 0.8;
+    }).map(function (o, i) {
+      var has = store.listings.some(function (l) { return l.distribution.org === o.name; });
+      var left = Math.min(94, (o.miles / maxMi) * 100);
+      return '<div class="rail-org' + (i % 2 ? ' alt' : '') + '" style="left:' + left + '%">' +
+        '<span class="rdot ' + (has ? 'has' : '') + '"></span>' +
+        '<span class="rlabel">' + o.miles + ' mi</span></div>';
+    }).join('');
+
     return '' +
     '<div style="display:flex;justify-content:space-between;align-items:center">' +
     '<div class="seg"><button data-lang="en" class="' + (I.get() === 'en' ? 'on' : '') + '">English</button>' +
     '<button data-lang="es" class="' + (I.get() === 'es' ? 'on' : '') + '">Español</button></div>' +
-    '<a class="back" style="margin:0" href="#sms">📱 Any-phone lane</a></div>' +
+    '<a class="back" style="margin:0" href="#sms">💬 ' + (es ? 'Asistente' : 'Assistant') + '</a></div>' +
     '<h3 class="sec">' + I.t('title') + '</h3><p class="sub">' + I.t('sub') + '</p>' +
+    '<input class="txt" id="searchFood" placeholder="' + (es ? 'Buscar comida o lugar…' : 'Search food or a place…') + '" value="' + esc(store.query) + '">' +
     '<div class="filters">' + ['all', 'today', 'veg'].map(function (f) {
       return '<button data-filter="' + f + '" class="' + (store.filter === f ? 'on' : '') + '">' +
         I.t(f === 'all' ? 'all' : f === 'today' ? 'filterToday' : 'filterVeg') + '</button>';
     }).join('') + '</div>' +
-    (cards || '<div class="card"><div class="meta">Nothing right now — check the SMS lane or check back soon.</div></div>') +
+    '<p class="count-line"><b>' + store.listings.filter(function (l) { return !l.claimedBy; }).length + '</b> ' +
+    (es ? 'lugares tienen comida ahora mismo' : 'places have food right now') + '</p>' +
+    '<div class="railwrap"><div class="railline"></div>' + rail + '</div>' +
+    (cards || '<div class="card"><div class="meta">' + (es ? 'Nada ahora — prueba el asistente.' : 'Nothing right now — try the assistant or check back soon.') + '</div></div>') +
     '<p class="footnote">' + I.t('expiry') + '</p>';
   };
 
+  /* ---------- AI assistant (real chat) ---------- */
   views.sms = function () {
-    var s = AI.smsScript(I.get());
+    var am = AI.activeModel();
+    var thread = store.chat.length
+      ? store.chat.map(function (m) {
+          return '<div class="sms' + (m.me ? ' me' : '') + '">' + esc(m.t) + '</div>';
+        }).join('')
+      : AI.smsScript(I.get()).map(function (m) {
+          return '<div class="sms' + (m.me ? ' me' : '') + '">' + esc(m.t) + '</div>';
+        }).join('');
     return '' +
     '<a class="back" href="#need">← ' + I.t('title') + '</a>' +
-    '<h3 class="sec">📱 ' + I.t('smsTitle') + '</h3><p class="sub">' + I.t('smsSub') + '</p>' +
-    '<div class="sms-thread">' + s.map(function (m) {
-      return '<div class="sms' + (m.me ? ' me' : '') + '">' + esc(m.t) + '</div>';
+    '<h3 class="sec">💬 ' + I.t('smsTitle') + '</h3>' +
+    '<p class="sub">' + I.t('smsSub') + ' ' +
+    (am.live ? '<span class="ai-badge on">● ' + esc(am.model) + '</span>'
+             : '<span class="ai-badge">offline demo mode — add a free AI key in ⚙️</span>') + '</p>' +
+    '<div class="sms-thread" id="chatThread">' + thread +
+    (store.chatBusy ? '<div class="sms typing"><span></span><span></span><span></span></div>' : '') +
+    '</div>' +
+    '<div class="chips">' + ['I need food today', '¿Hay vegetales?', 'no ID — can I still get food?'].map(function (c) {
+      return '<button class="chip-btn" data-say="' + esc(c) + '">' + esc(c) + '</button>';
     }).join('') + '</div>' +
+    '<div class="chatrow"><input class="txt" id="chatInput" placeholder="' +
+    (am.live ? 'Type in any language…' : 'AI not configured — canned replies only') + '">' +
+    '<button class="btn btn-primary" id="chatSend" style="width:auto;margin:0">➤</button></div>' +
     '<p class="footnote">34% of low-income adults are smartphone-only; ~1 in 5 seniors own no smartphone (Pew 2025). ' +
-    'SMS works on all of them. NYC\'s Plentiful proved the pattern in 9 languages — FoodLink brings it to Des Moines.</p>';
+    'The same assistant answers on SMS — NYC\'s Plentiful proved the pattern in 9 languages; FoodLink brings it to Des Moines.</p>';
   };
 
+  /* ---------- needs board ---------- */
   views.needsBoard = function () {
     return '' +
     '<a class="back" href="#home">← Home</a>' +
@@ -203,16 +287,17 @@
     }).join('') +
     '<div class="card"><div class="k">Post a need (organizations)</div>' +
     '<input class="txt" id="needText" placeholder="e.g. We need 30 halal meals Friday night" style="margin-top:8px">' +
-    '<button class="btn btn-primary" id="postNeed">Post to the board</button></div>';
+    '<button class="btn btn-primary" id="postNeed">Post to the board</button>' +
+    '<p class="ai-note">Needs are parsed by the same assistant — one sentence is enough.</p></div>';
   };
 
   /* ---------------- router ---------------- */
   views['needs-board'] = views.needsBoard; // tab href alias
   function render() {
     var h = location.hash.replace('#', '') || 'home';
-    var parts = h.split('/'), name = parts[0], arg = parts[1];
+    var parts = h.split('/'), name = parts[0];
     var fn = views[name] || views.home;
-    document.getElementById('app').innerHTML = fn(arg);
+    document.getElementById('app').innerHTML = fn();
     document.querySelectorAll('.tabbar a').forEach(function (a) {
       a.classList.toggle('on', a.dataset.tab === name);
     });
@@ -222,19 +307,31 @@
 
   function bind(name) {
     var app = document.getElementById('app');
+
     if (name === 'donate') {
       var txt = document.getElementById('postText'), find = document.getElementById('findMatch');
-      var check = document.getElementById('attest');
+      var check = document.getElementById('attest'), out = document.getElementById('parseOut');
       function refresh() { find.disabled = !(txt.value.trim().length > 4 && check.checked); }
-      txt.addEventListener('input', refresh); check.addEventListener('change', refresh);
+      var deb;
+      txt.addEventListener('input', function () {
+        refresh(); clearTimeout(deb);
+        var v = txt.value;
+        deb = setTimeout(function () {
+          if (v.trim().length < 6) { out.innerHTML = ''; return; }
+          var base = AI.parseDonation(v);
+          store.draft = base; out.innerHTML = parseHTML(base);
+          AI.parseDonationSmart(v).then(function (p) {
+            if (txt.value === v) { store.draft = p; out.innerHTML = parseHTML(p); }
+          });
+        }, 350);
+      });
+      check.addEventListener('change', refresh);
       find.addEventListener('click', function () {
-        store.draft = AI.parseDonation(txt.value); store.draft.attested = check.checked;
-        AI.parseDonationSmart(txt.value).then(function (p) { // upgrades if LLM hook configured
-          p.attested = check.checked; store.draft = p; location.hash = '#match';
-        });
+        if (store.draft) store.draft.raw = txt.value;
         location.hash = '#match';
       });
     }
+
     if (name === 'match') {
       app.querySelectorAll('[data-connect]').forEach(function (b) {
         b.addEventListener('click', function () {
@@ -242,11 +339,14 @@
           store.impact.meals += d.qty; store.impact.donations += 1;
           if (store.impact.orgs.indexOf(org.name) === -1) store.impact.orgs.push(org.name);
           saveImpact();
+          var listing = store.listings.find(function (l) { return l.claimedBy === null && l.type === d.type; });
+          if (listing) listing.claimedBy = org.name;
           toast('✓ ' + org.name + ' accepted — ' + d.qty + ' meals rescued');
           location.hash = '#receipt';
         });
       });
     }
+
     if (name === 'need') {
       app.querySelectorAll('[data-lang]').forEach(function (b) {
         b.addEventListener('click', function () { I.set(b.dataset.lang); render(); });
@@ -254,16 +354,71 @@
       app.querySelectorAll('[data-filter]').forEach(function (b) {
         b.addEventListener('click', function () { store.filter = b.dataset.filter; render(); });
       });
+      var s = document.getElementById('searchFood');
+      if (s) { var deb2; s.addEventListener('input', function () {
+        clearTimeout(deb2); var v = s.value; deb2 = setTimeout(function () { store.query = v; render();
+          var s2 = document.getElementById('searchFood'); if (s2) { s2.focus(); s2.setSelectionRange(v.length, v.length); }
+        }, 250); });
+      }
     }
+
+    if (name === 'settings') {
+      var prov = document.getElementById('aiProvider');
+      prov.addEventListener('change', function () {
+        document.getElementById('aiKeyRow').style.display =
+          (prov.value === 'template' || prov.value === 'ollama') ? 'none' : '';
+        document.getElementById('aiModel').placeholder = AI.DEFAULTS[prov.value].model || '';
+      });
+      document.getElementById('aiSave').addEventListener('click', function () {
+        var cfg = { provider: prov.value, key: document.getElementById('aiKey').value.trim(),
+                    model: document.getElementById('aiModel').value.trim() };
+        AI.setConfig(cfg);
+        var st = document.getElementById('aiStatus');
+        st.innerHTML = 'Testing connection…';
+        AI.testConnection().then(function (r) {
+          st.innerHTML = r.ok
+            ? '<b style="color:var(--green-700)">✓ Connected — AI replied: “' + esc(r.reply) + '”</b>'
+            : '<b style="color:var(--red-600)">✗ ' + esc(r.error) + '</b> — falling back to templates; demo still works.';
+        });
+      });
+    }
+
+    if (name === 'sms') {
+      var input = document.getElementById('chatInput'), send = document.getElementById('chatSend');
+      function sendMsg(text) {
+        text = (text || input.value).trim();
+        if (!text || store.chatBusy) return;
+        store.chat.push({ me: true, t: text });
+        store.chatBusy = true; render();
+        AI.assistantReply(store.chat.map(function (m) {
+          return { role: m.me ? 'user' : 'assistant', content: m.t };
+        }), snapshot()).then(function (t) {
+          store.chat.push({ me: false, t: t.trim() });
+        }).catch(function () {
+          var canned = AI.smsScript(I.get());
+          store.chat.push({ me: false, t: '(offline mode) ' + canned[1].t +
+            ' — add a free AI key in ⚙️ for live answers.' });
+        }).finally(function () { store.chatBusy = false; render(); });
+      }
+      send.addEventListener('click', function () { sendMsg(); });
+      input.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendMsg(); });
+      app.querySelectorAll('[data-say]').forEach(function (b) {
+        b.addEventListener('click', function () { sendMsg(b.dataset.say); });
+      });
+      var thread = document.getElementById('chatThread');
+      if (thread) thread.scrollTop = thread.scrollHeight;
+    }
+
     if (name === 'needsBoard') {
       var btn = document.getElementById('postNeed');
       btn.addEventListener('click', function () {
         var v = document.getElementById('needText').value.trim();
         if (v.length < 6) { toast('Tell us a little more about the need.'); return; }
-        var p = AI.parseDonation(v);
-        store.needs.unshift({ id: 'N' + Date.now(), org: 'Your organization (simulated)', type: p.type,
-          qty: p.qty, label: v, by: p.deadlineLabel, note: '' });
-        render(); toast('Posted to the Needs Board ✓');
+        AI.parseDonationSmart(v).then(function (p) {
+          store.needs.unshift({ id: 'N' + Date.now(), org: 'Your organization (simulated)', type: p.type,
+            qty: p.qty, label: v, by: p.deadlineLabel, note: '' });
+          render(); toast('Posted to the Needs Board ✓');
+        });
       });
     }
   }
