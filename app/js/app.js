@@ -48,6 +48,31 @@
     }
   }
   function saveImpact() { localStorage.setItem('foodlink-impact', JSON.stringify(store.impact)); }
+
+  /* ---------- live grid: cross-window sync + real expiry ---------- */
+  var BOOT = Date.now();
+  var bc = null;
+  try { bc = new BroadcastChannel('foodlink-grid'); } catch (e) { /* older browsers */ }
+  if (bc) bc.onmessage = function (e) {
+    var m = e.data;
+    if (!m || m.type !== 'sync') return;
+    store.listings = m.listings; store.needs = m.needs;
+    if (m.impact && (m.impact.meals || 0) > (store.impact.meals || 0)) store.impact = m.impact;
+    render(); toast('📡 Live — the grid just updated from another window');
+  };
+  function publish() { if (bc) bc.postMessage({ type: 'sync', listings: store.listings, needs: store.needs, impact: store.impact }); }
+  function isExpired(l) { return Date.now() > BOOT + l.deadlineMin * 60000; }
+  function liveListings() { return store.listings.filter(function (l) { return !l.claimedBy && !isExpired(l); }); }
+  function agoText(l) {
+    var m = Math.max(0, Math.round((Date.now() - (BOOT + l.postedMin * 60000)) / 60000));
+    return m <= 0 ? 'posted just now' : 'posted ' + m + ' min ago';
+  }
+  setInterval(function () {
+    var before = store.listings.length;
+    store.listings = store.listings.filter(function (l) { return !isExpired(l); });
+    if (store.listings.length !== before) { publish(); render(); toast('⏰ A listing hit its deadline and left the board.'); }
+  }, 20000);
+
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function fmtTime(minFromNow) {
@@ -76,7 +101,7 @@
   var views = {};
 
   views.home = function () {
-    var live = store.listings.filter(function (l) { return !l.claimedBy; }).length;
+    var live = liveListings().length;
     var am = AI.activeModel();
     return '' +
     '<div class="toprow"><div class="brand"><div class="logo">🌽</div><div><b>FoodLink</b>' +
@@ -91,7 +116,8 @@
     '<div class="gridmini"><h4>The Grid — live</h4>' + gridHTML() +
     '<div class="legend"><span><i style="background:var(--blue-600)"></i>surplus</span>' +
     '<span><i style="background:var(--red-600)"></i>need</span>' +
-    '<span style="margin-left:auto">a closed circuit = food rescued</span></div></div>' +
+    '<span style="margin-left:auto">a closed circuit = food rescued</span></div>' +
+    '<p class="ai-note" style="margin-top:8px">📡 Live grid: open a second window — post food in one, watch it appear in the other.</p></div>' +
     '<div class="gridmini"><h4>Your impact so far (this device)</h4><div class="card" style="margin:0">' +
     '<div class="meta" style="font-size:14px"><b style="font-size:22px;color:var(--green-700)">' + store.impact.meals +
     '</b> meals rescued · ' + store.impact.donations + (store.impact.donations === 1 ? ' donation' : ' donations') + ' · ' +
@@ -266,7 +292,7 @@
   views.need = function () {
     var es = I.get() === 'es';
     var q = store.query.toLowerCase();
-    var cards = store.listings.filter(function (l) {
+    var cards = liveListings().filter(function (l) {
       if (store.filter === 'today' && l.deadlineMin > 1440) return false;
       if (store.filter === 'veg' && l.diet !== 'vegetarian') return false;
       if (q && (l.type + ' ' + l.diet + ' ' + l.distribution.org + ' ' + l.distribution.window).toLowerCase().indexOf(q) === -1) return false;
@@ -291,7 +317,7 @@
         '<div class="k">' + I.t(l.type) + '</div><h5>' + l.qty + ' ' + I.t(l.type) +
         (l.diet ? ' · ' + I.diet(l.diet) : '') + '</h5>' +
         '<div class="meta">📍 ' + mi + ' mi · ' + I.t('via') + ' ' + esc(l.distribution.org) +
-        (openNow ? ' <span class="open-badge">● open now</span>' : '') + '</div>' +
+        (openNow ? ' <span class="open-badge">● open now</span>' : '') + ' · ' + agoText(l) + '</div>' +
         '<div class="honest">' + I.t('dist') + ': ' + esc(win) + (note ? ' · ' + esc(note) : '') + ' · <b>' + I.t('confirmed') + '</b></div>' +
         detail +
         '<div class="tap-hint">' + (isOpen ? (es ? '▲ tocar para cerrar' : '▲ tap to close') : (es ? '▼ tocar para detalles' : '▼ tap for details')) + '</div></div>';
@@ -319,12 +345,33 @@
       return '<button data-filter="' + f + '" class="' + (store.filter === f ? 'on' : '') + '">' +
         I.t(f === 'all' ? 'all' : f === 'today' ? 'filterToday' : 'filterVeg') + '</button>';
     }).join('') + '</div>' +
-    '<p class="count-line"><b>' + store.listings.filter(function (l) { return !l.claimedBy; }).length + '</b> ' +
+    '<p class="count-line"><b>' + liveListings().length + '</b> ' +
     (es ? 'lugares tienen comida ahora mismo' : 'places have food right now') + '</p>' +
     '<div class="railwrap"><div class="railline"></div>' + rail + '</div>' +
     (cards || '<div class="card"><div class="meta">' + (es ? 'Nada ahora — prueba el asistente.' : 'Nothing right now — try the assistant or check back soon.') + '</div></div>') +
+    realResourcesHTML(es) +
     '<p class="footnote">' + I.t('expiry') + '</p>';
   };
+
+  function realResourcesHTML(es) {
+    return '<div class="gridmini"><h4>' + (es ? 'Recursos reales cerca de ti' : 'Real food resources, right now') + '</h4>' +
+      '<p class="ai-note" style="margin:0 0 10px">' + (es ? 'Directorio público — llama para confirmar horarios.' :
+      'Public directory (official sources). Call ahead to confirm hours — the live surplus board above is the simulated part.') + '</p>' +
+      D.directory.map(function (r) {
+        var first = r.phone.split('·')[0].trim();
+        var digits = first.replace(/[^0-9+]/g, '');
+        var call = (digits.length >= 7) ? '<a class="callbtn" href="tel:' + digits + '">📞 ' + esc(first) + '</a>'
+                                        : '<span class="callbtn" style="background:var(--line)">' + esc(first) + '</span>';
+        return '<div class="card dir"><div class="k">' + esc(r.name) + '</div>' +
+          '<div class="meta">📍 ' + esc(r.addr) + '</div>' +
+          '<div class="meta">🕒 ' + esc(r.hours) + '</div>' +
+          '<div class="dirrow">' + call +
+          '<a class="srclink" href="' + r.src + '" target="_blank" rel="noopener">source ↗</a></div></div>';
+      }).join('') +
+      '<div class="dirrow" style="justify-content:space-between;margin-top:2px">' +
+      '<a class="srclink" href="' + D.meta.links.dmarcPantries + '" target="_blank" rel="noopener">All DMARC pantries ↗</a>' +
+      '<a class="srclink" href="' + D.meta.links.fbiFindFood + '" target="_blank" rel="noopener">Food Bank of Iowa finder ↗</a></div></div>';
+  }
 
   /* ---------- AI assistant (real chat) ---------- */
   views.sms = function () {
@@ -456,6 +503,9 @@
           else if (b.dataset.w !== 'skip') location.hash = b.dataset.w;
         });
       });
+      w.addEventListener('click', function (e) { // backdrop tap dismisses
+        if (e.target === w) { localStorage.setItem('foodlink-seen', '1'); w.remove(); }
+      });
     }
     // tour bar
     var old = document.querySelector('.tourbar'); if (old) old.remove();
@@ -473,6 +523,7 @@
   }
 
   function bind(name) {
+    if (name === 'needs-board') name = 'needsBoard'; // alias: tab href vs handler key
     var app = document.getElementById('app');
 
     if (name === 'home') {
@@ -521,6 +572,7 @@
           saveImpact();
           var listing = store.listings.find(function (l) { return l.claimedBy === null && l.type === d.type; });
           if (listing) listing.claimedBy = org.name;
+          publish();
           toast('✓ ' + org.name + ' accepted — ' + d.qty + ' meals rescued');
           location.hash = '#receipt';
         });
@@ -602,6 +654,7 @@
         AI.parseDonationSmart(v).then(function (p) {
           store.needs.unshift({ id: 'N' + Date.now(), org: 'Your organization (simulated)', type: p.type,
             qty: p.qty, label: v, by: p.deadlineLabel, note: '' });
+          publish();
           render(); toast('Posted to the Needs Board ✓');
         });
       });

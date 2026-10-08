@@ -9,7 +9,8 @@ const outDir = path.join(here, '..', 'designs', 'run-02', 'app');
 fs.mkdirSync(outDir, { recursive: true });
 
 const browser = await chromium.launch({ headless: true });
-const page = await browser.newPage({ viewport: { width: 400, height: 820 }, deviceScaleFactor: 2 });
+const context = await browser.newContext({ viewport: { width: 400, height: 820 }, deviceScaleFactor: 2 });
+const page = await context.newPage();
 const errors = [];
 page.on('pageerror', e => errors.push('pageerror: ' + e.message));
 page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
@@ -96,6 +97,8 @@ await page.waitForTimeout(300);
 const pulse = await page.locator('#exportData').count();
 if (!pulse) errors.push('network pulse / export missing');
 await page.fill('#needText', 'We need 30 halal meals Friday night');
+await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+await page.waitForTimeout(200);
 await page.click('#postNeed');
 await page.waitForTimeout(600);
 await page.screenshot({ path: path.join(outDir, 'app-09-needs-board.png'), fullPage: true });
@@ -105,6 +108,38 @@ await page.waitForTimeout(300);
 const promptbox = await page.locator('.promptbox').count();
 if (promptbox < 2) errors.push('prompt transparency view missing');
 await page.screenshot({ path: path.join(outDir, 'app-10-how.png'), fullPage: true });
+
+// real directory visible on find-food
+await page.goto('http://localhost:8123/#need');
+await page.waitForTimeout(300);
+const dirCards = await page.locator('.card.dir').count();
+if (dirCards < 6) errors.push('real directory missing (got ' + dirCards + ' entries)');
+const callbtns = await page.locator('.callbtn').count();
+if (callbtns < 6) errors.push('call buttons missing');
+
+// LIVE GRID: two windows in the SAME browser profile (BroadcastChannel is per-profile),
+// post a need in window 2, watch it appear in window 1
+const page2 = await context.newPage();
+await page2.goto('http://localhost:8123/#needs-board');
+await page2.waitForTimeout(400);
+const w2 = page2.locator('#welcome');
+if (await w2.count()) await page2.click('[data-w="skip"]');
+await page2.waitForTimeout(200);
+await page.goto('http://localhost:8123/#needs-board');
+await page.waitForTimeout(400);
+const p2Before = await page2.locator('.card.need').count();
+await page2.fill('#needText', 'Window-two test: we need 10 burritos');
+await page2.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+await page2.waitForTimeout(200);
+await page2.click('#postNeed');
+await page2.waitForTimeout(700);
+const p2Count = await page2.locator('.card.need').count();
+if (p2Count !== p2Before + 1) errors.push('page2 own post failed: ' + p2Before + ' -> ' + p2Count);
+await page.waitForTimeout(900); // allow BroadcastChannel delivery
+const synced = await page.locator('.card.need', { hasText: 'Window-two test' }).count();
+if (!synced) errors.push('cross-window sync failed: window-two need not visible in window 1');
+await page.screenshot({ path: path.join(outDir, 'app-11-livesync.png'), fullPage: true });
+await page2.close();
 
 await browser.close();
 console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no JS errors — flow complete');
