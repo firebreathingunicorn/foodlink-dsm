@@ -36,7 +36,7 @@ Iowa's emergency food system is already strong — DMARC (14 partner pantries, ~
 Pilot with a real pantry partner; multilingual SMS beyond the demo's EN/ES (Des Moines Public Schools serves families speaking 100+ languages); direct-to-household routing for small hot-meal surpluses under the FDIA 2023; a monthly open "Polk Food Access Index" from aggregated supply/need data.
 
 ## Built with
-HTML, CSS, vanilla JavaScript, localStorage; Node test runner; headless-browser end-to-end tests; Wolfram-verified math.
+HTML, CSS, vanilla JavaScript, localStorage; Node test runner; headless-browser end-to-end tests; Wolfram-verified math. The AI layer is bring-your-own free/open-source: a local **Ollama** model (open-source, 100% on-device), or a free-tier key for Groq / Google Gemini / OpenRouter — with a built-in template fallback so every feature survives offline.
 
 ## Disclosure
 **All organizations, listings, and data in this demo are simulated.** Real organization names appear only as examples of participant types; no partnership is claimed. The tax estimator is informational only, not tax advice.
