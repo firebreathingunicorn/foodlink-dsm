@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FoodLink — Design Mockup (approval artifact)</title>
+<style>
+  :root{
+    --green-900:#14532d; --green-700:#15803d; --green-600:#16a34a; --green-100:#dcfce7; --green-50:#f0fdf4;
+    --amber-600:#d97706; --amber-100:#fef3c7; --amber-50:#fffbeb;
+    --red-600:#dc2626; --red-100:#fee2e2;
+    --blue-600:#2563eb; --blue-100:#dbeafe;
+    --ink:#1c2b22; --muted:#5b6b60; --line:#e4eae5; --card:#ffffff; --bg:#f6f8f5;
+    --radius:14px; --shadow:0 1px 2px rgba(20,43,34,.06),0 4px 14px rgba(20,43,34,.07);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;background:var(--bg);color:var(--ink);padding:28px 18px 60px}
+  .wrap{max-width:420px;margin:0 auto}
+  h1.page{font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:6px}
+  .phones{display:flex;flex-wrap:wrap;gap:34px;justify-content:center}
+  .frame{width:390px;background:#fff;border:1px solid var(--line);border-radius:26px;box-shadow:var(--shadow);overflow:hidden}
+  .frame .notch{height:22px;background:var(--green-900);display:flex;align-items:center;justify-content:center}
+  .frame .notch i{width:110px;height:8px;border-radius:99px;background:#0b2f18;display:block}
+  .screen{padding:16px 14px 22px;min-height:300px}
+  .cap{font-size:12.5px;color:var(--muted);text-align:center;margin-top:10px;max-width:390px}
+  .brand{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .brand .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--green-600),var(--green-900));display:flex;align-items:center;justify-content:center;font-size:18px}
+  .brand b{font-size:18px;letter-spacing:-.01em}
+  .brand small{display:block;color:var(--muted);font-weight:500}
+  .tag{font-size:12px;color:var(--green-700);background:var(--green-100);border-radius:99px;padding:3px 10px;font-weight:600;display:inline-block;margin:6px 0 10px}
+  .btn-big{display:block;width:100%;border:0;border-radius:var(--radius);padding:18px;font-size:17px;font-weight:700;text-align:left;margin-bottom:12px;cursor:pointer;box-shadow:var(--shadow)}
+  .btn-big span{display:block;font-size:12.5px;font-weight:500;opacity:.85;margin-top:3px}
+  .btn-need{background:var(--green-700);color:#fff}
+  .btn-have{background:#fff;color:var(--ink);border:1.5px solid var(--green-600)}
+  .lane{display:flex;gap:8px;align-items:center;background:var(--amber-50);border:1px dashed var(--amber-600);border-radius:var(--radius);padding:10px 12px;font-size:13px;color:#7c4a03}
+  .lane b{color:#92400e}
+  .gridmini{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+  .gridmini h4{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px}
+  .dots{position:relative;height:74px;background:linear-gradient(#f0fdf4,#e7f5ec);border-radius:12px;border:1px solid var(--line);overflow:hidden}
+  .dot{position:absolute;width:14px;height:14px;border-radius:99px}
+  .dot.s{background:var(--blue-600);box-shadow:0 0 0 5px rgba(37,99,235,.15)}
+  .dot.n{background:var(--red-600);box-shadow:0 0 0 5px rgba(220,38,38,.13)}
+  .link-line{position:absolute;height:2px;background:repeating-linear-gradient(90deg,var(--green-700) 0 6px,transparent 6px 10px);transform-origin:0 50%}
+  .legend{display:flex;gap:14px;font-size:11.5px;color:var(--muted);margin-top:6px}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:99px;margin-right:4px}
+  h3.sec{font-size:15px;margin-bottom:2px}
+  .sub{font-size:12.5px;color:var(--muted);margin-bottom:12px}
+  textarea.post{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:12px;font:inherit;font-size:15px;min-height:74px;resize:vertical}
+  .parsed{margin-top:10px;background:var(--blue-100);border-radius:12px;padding:10px 12px;font-size:13px}
+  .parsed b{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--blue-600);display:block;margin-bottom:4px}
+  .chip{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:99px;padding:2px 9px;font-size:12px;margin:2px 4px 2px 0}
+  .btn{display:inline-block;border:0;border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px;cursor:pointer}
+  .btn-primary{background:var(--green-700);color:#fff;width:100%;margin-top:10px}
+  .ai-note{font-size:11.5px;color:var(--muted);margin-top:8px}
+  .match{border:1.5px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:10px;background:#fff}
+  .match.top{border-color:var(--green-600);background:var(--green-50)}
+  .match .head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .match .head b{font-size:14.5px}
+  .score{font-size:20px;font-weight:800;color:var(--green-700)}
+  .score small{font-size:11px;color:var(--muted);font-weight:600}
+  .bars{margin:8px 0 6px;display:grid;gap:4px}
+  .bar{display:grid;grid-template-columns:86px 1fr 30px;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+  .bar .track{height:7px;background:var(--line);border-radius:99px;overflow:hidden}
+  .bar .fill{height:100%;border-radius:99px;background:var(--green-600)}
+  .why{font-size:12.5px;color:#14532d;background:#fff;border:1px dashed var(--green-600);border-radius:9px;padding:7px 9px;margin-top:7px}
+  .match.gated{opacity:.66;background:var(--bg)}
+  .gated .tag-gate{font-size:11px;color:var(--red-600);background:var(--red-100);border-radius:99px;padding:2px 8px;font-weight:700;display:inline-block;margin-top:6px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:10px;box-shadow:var(--shadow)}
+  .card .k{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--green-700)}
+  .card h5{font-size:15px;margin:3px 0 4px}
+  .card .meta{font-size:12.5px;color:var(--muted)}
+  .card .honest{margin-top:7px;font-size:12px;background:var(--green-50);border-radius:8px;padding:6px 9px;color:#14532d}
+  .pill{float:right;font-size:11px;font-weight:700;border-radius:99px;padding:2px 8px}
+  .pill.now{background:var(--amber-100);color:#92400e}
+  .pill.ok{background:var(--green-100);color:var(--green-700)}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:99px;overflow:hidden;font-size:12px;margin:8px 0}
+  .seg button{border:0;background:#fff;padding:5px 13px;font-weight:600;color:var(--muted)}
+  .seg button.on{background:var(--green-700);color:#fff}
+  .need{border-left:4px solid var(--red-600)}
+  .need .k{color:var(--red-600)}
+  .sms{background:#e8f1ea;border-radius:18px 18px 18px 4px;padding:9px 12px;font-size:13px;margin-bottom:8px;max-width:85%}
+  .sms.me{background:var(--green-700);color:#fff;border-radius:18px 18px 4px 18px;margin-left:auto}
+  .receipt{border:1.5px solid var(--green-600);border-radius:var(--radius);background:#fff;padding:14px}
+  .receipt .row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--line)}
+  .receipt .row:last-child{border:0}
+  .receipt .big{font-size:26px;font-weight:800;color:var(--green-700)}
+  .qr{width:74px;height:74px;border:1.5px dashed var(--green-700);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:9.5px;color:var(--green-700);text-align:center;line-height:1.25}
+  .sim{position:sticky;top:0;z-index:5;background:#7c2d12;color:#fed7aa;text-align:center;font-size:11px;padding:5px;font-weight:600}
+  .footnote{font-size:11px;color:var(--muted);margin-top:10px;text-align:center}
+</style>
+</head>
+<body>
+<h1 class="page">FoodLink · design mockup · 6 key screens</h1>
+<p class="cap">This is the approval artifact per your design rule — it shows the exact look the app ships with. Open it, and if anything's wrong (colors, layout, tone), tell me and I'll revise before/while the app catches up.</p>
+<div class="phones">
+
+<!-- ============ 1. HOME ============ -->
+<div>
+<div class="frame"><div class="notch"><i></i></div>
+<div class="sim">DEMO · ALL DATA SIMULATED</div>
+<div class="screen">
+  <div class="brand"><div class="logo">🌽</div><div><b>FoodLink</b><small>The real-time food grid · Des Moines</small></div></div>
+  <span class="tag">● 7 listings live right now</span>
+  <button class="btn-big btn-need">🍅 I need food<span>Free food near you, today — no sign-up</span></button>
+  <button class="btn-big btn-have">🏪 I have food<span>Businesses & organizations: post surplus in one sentence</span></button>
+  <div class="lane">📱 <div><b>No smartphone? No problem.</b> Text <b>FOOD</b> to (xxx) xxx-xxxx — works on any phone, en Español too.</div></div>
+  <div class="gridmini">
+    <h4>The Grid — live</h4>
+    <div class="dots">
+      <div class="link-line" style="left:22%;top:38%;width:120px;transform:rotate(18deg)"></div>
+      <div class="dot s" style="left:14%;top:30%"></div><div class="dot s" style="left:70%;top:62%"></div><div class="dot s" style="left:44%;top:12%"></div>
+      <div class="dot n" style="left:22%;top:38%"></div><div class="dot n" style="left:56%;top:78%"></div>
+    </div>
+    <div class="legend"><span><i style="background:var(--blue-600)"></i>surplus</span><span><i style="background:var(--red-600)"></i>need</span><span style="margin-left:auto">a closed circuit = food rescued</span></div>
+  </div>
+</div></div>
+<p class="cap"><b>1 · Home.</b> Two buttons, plus the SMS lane (always visible — it's a first-class persona, not a footnote) and the live Grid teaser.</p>
+</div>
+
+<!-- ============ 2. DONOR POST ============ -->
+<div>
+<div class="frame"><div class="notch"><i></i></div>
+<div class="sim">DEMO · ALL DATA SIMULATED</div>
+<div class="screen">
+  <h3 class="sec">Post surplus</h3>
+  <p class="sub">Type it like you'd text a coworker. FoodLink does the rest.</p>
+  <textarea class="post">40 vegetarian prepared meals, refrigerated, need gone by 7pm</textarea>
+  <div class="parsed"><b>✓ FoodLink parsed your note</b>
+    <span class="chip">🍱 prepared meals</span><span class="chip">× 40</span><span class="chip">❄️ refrigerated</span><span class="chip">🌱 vegetarian</span><span class="chip">⏰ by 7:00 PM</span>
+  </div>
+  <div style="font-size:12px;color:var(--muted);margin-top:10px">☑ I attest this food has been held at safe temperatures and will be labeled for allergens.</div>
+  <button class="btn btn-primary">Find where it should go →</button>
+  <p class="ai-note">Parsed on-device by FoodLink's assistant (template fallback active — demo can't die offline).</p>
+</div></div>
+<p class="cap"><b>2 · Donor posts.</b> One sentence in; the assistant extracts type, quantity, storage, diet, deadline. Safe-handling attestation is a gate, not fine print.</p>
+</div>
+
+<!-- ============ 3. MATCH RESULTS ============ -->
+<div>
+<div class="frame"><div class="notch"><i></i></div>
+<div class="sim">DEMO · ALL DATA SIMULATED</div>
+<div class="screen">
+  <h3 class="sec">Where your 40 meals should go</h3>
+  <p class="sub">Ranked by the match score — math shown, nothing hidden.</p>
+  <div class="match top">
+    <div class="head"><b>DMARC partner pantry</b><span class="score">82.4<small>%</small></span></div>
+    <div class="meta" style="font-size:12.5px;color:var(--muted)">📍 2.3 mi · can take all 40 · open till 6 PM</div>
+    <div class="bars">
+      <div class="bar"><span>urgency .35</span><div class="track"><div class="fill" style="width:90%"></div></div><span>0.90</span></div>
+      <div class="bar"><span>distance .30</span><div class="track"><div class="fill" style="width:63%"></div></div><span>0.63</span></div>
+      <div class="bar"><span>capacity .20</span><div class="track"><div class="fill" style="width:100%"></div></div><span>1.00</span></div>
+      <div class="bar"><span>transport .15</span><div class="track"><div class="fill" style="width:80%"></div></div><span>0.80</span></div>
+    </div>
+    <div class="why">“Closest organization that can take the full quantity before your 7 PM deadline, and it's running low on prepared food tonight.”</div>
+    <button class="btn btn-primary" style="background:var(--green-600)">Connect →</button>
+  </div>
+  <div class="match">
+    <div class="head"><b>Hope shelter kitchen</b><span class="score">62.1<small>%</small></span></div>
+    <div class="meta" style="font-size:12.5px;color:var(--muted)">📍 1.2 mi · can only take 30 of 40 · not short tonight</div>
+    <div class="why">“Closer, but partial capacity only — 10 meals would still need a home.”</div>
+  </div>
+  <div class="match gated">
+    <div class="head"><b>Polk produce pantry</b><span class="score">—</span></div>
+    <div class="meta" style="font-size:12.5px;color:var(--muted)">📍 1.0 mi · produce only</div>
+    <span class="tag-gate">✕ GATED — cannot accept prepared meals (no reheat capacity)</span>
+  </div>
+</div></div>
+<p class="cap"><b>3 · The match screen (the centerpiece).</b> Hard-gated candidates stay visible with their reason. The #1 shows its full math and a plain-English “why.” Robustness-tested: #1 dominates #2 on every factor (100% of weightings) and holds ~97% vs #3.</p>
+</div>
+
+<!-- ============ 4. HOUSEHOLD VIEW ============ -->
+<div>
+<div class="frame"><div class="notch"><i></i></div>
+<div class="sim">DEMO · TODOS LOS DATOS SON SIMULADOS</div>
+<div class="screen">
+  <div class="seg"><button>English</button><button class="on">Español</button></div>
+  <h3 class="sec">Comida gratis cerca de ti</h3>
+  <p class="sub">No necesitas cuenta. Solo aparece.</p>
+  <div class="card">
+    <span class="pill now">HOY · hasta 7 PM</span>
+    <div class="k">Comidas preparadas 🍱</div>
+    <h5>40 comidas vegetarianas</h5>
+    <div class="meta">📍 a 1.4 mi · a través de una despensa socio de DMARC</div>
+    <div class="honest">Distribución: martes 4–7 PM · sin cita · <b>confirmado por la organización receptora</b></div>
+  </div>
+  <div class="card">
+    <span class="pill ok">SÁBADO</span>
+    <div class="k">Productos frescos 🥦</div>
+    <h5>120 lbs de verduras mixtas</h5>
+    <div class="meta">📍 a 2.1 mi · despensa móvil de Food Bank of Iowa</div>
+    <div class="honest">Sábado 10–11:30 AM · llega temprano</div>
+  </div>
+  <p class="footnote">Las tarjetas caducan solas — nunca verás comida que ya no está.</p>
+</div></div>
+<p class="cap"><b>4 · Household view.</b> Honest cards: they route to the org's distribution reality, never promise food the app can't guarantee. Auto-expiring. Language toggle. No login, no means-test to browse.</p>
+</div>
+
+<!-- ============ 5. NEEDS BOARD ============ -->
+<div>
+<div class="frame"><div class="notch"><i></i></div>
+<div class="sim">DEMO · ALL DATA SIMULATED</div>
+<div class="screen">
+  <h3 class="sec">Needs Board</h3>
+  <p class="sub">The demand side posts too — surplus gets a destination <i>before</i> it's cooked.</p>
+  <div class="card need">
+    <div class="k">NEED · prepared meals</div>
+    <h5>50 meals for Saturday family night</h5>
+    <div class="meta">DMARC partner pantry · by Sat 10 AM · serves ~120 people</div>
+  </div>
+  <div class="card need">
+    <div class="k">NEED · fresh produce</div>
+    <h5>200 lbs weekly, any mix</h5>
+    <div class="meta">Johnston community pantry · ongoing · cold storage on site</div>
+  </div>
+  <div class="card need">
+    <div class="k">NEED · shelf-stable</div>
+    <h5>Pantry staples — rice, beans, canned protein</h5>
+    <div class="meta">Hope shelter kitchen · this month</div>
+  </div>
+</div></div>
+<p class="cap"><b>5 · Needs Board.</b> The structural gap in every existing platform: demand can finally speak. (This is the innovation slide.)</p>
+</div>
+
+<!-- ============ 6. IMPACT RECEIPT ============ -->
+<div>
+<div class="frame"><div class="notch"><i></i></div>
+<div class="sim">DEMO · ALL DATA SIMULATED</div>
+<div class="screen">
+  <h3 class="sec">Impact receipt</h3>
+  <p class="sub">Every donation closes the loop — for the business and the IRS.</p>
+  <div class="receipt">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div><div class="k" style="font-size:11px;font-weight:700;color:var(--green-700)">TODAY'S DONATION</div>
+      <div class="big">40 meals 🌽</div></div>
+      <div class="qr">QR<br>verified<br>impact page</div>
+    </div>
+    <div class="row"><span>Food diverted from waste</span><b>48 lbs</b></div>
+    <div class="row"><span>Value at Iowa avg ($3.52/meal)</span><b>$140.80</b></div>
+    <div class="row"><span>Community organizations served</span><b>1</b></div>
+    <div class="row"><span>Potential tax deduction (est.)</span><b>$70.40</b></div>
+    <div class="row"><span>This pattern, all year →</span><b>$3,660.80</b></div>
+  </div>
+  <button class="btn btn-primary">⬇ Download receipt (PDF)</button>
+  <p class="ai-note">Estimates only — IRC §170(e)(3): basis + ½ of expected gain, capped at 2× basis. Not tax advice.</p>
+</div></div>
+<p class="cap"><b>6 · Impact receipt.</b> 40 meals × 1.2 lbs = 48 lbs; × $3.52 = $140.80; the weekly-pattern projection uses the Wolfram-verified $3,660.80/yr figure. QR makes impact publicly verifiable (anti-greenwashing).</p>
+</div>
+
+</div>
+</body>
+</html>
