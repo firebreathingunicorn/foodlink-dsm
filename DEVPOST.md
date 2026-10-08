@@ -16,6 +16,21 @@ FoodLink is a real-time food-access grid with five sides: businesses post surplu
 
 The matching engine applies **hard safety gates first** (food-type compatibility, storage, deadline feasibility, safe-handling attestation — gated-out organizations stay visible with their reason), then an **explainable soft score**: 35% urgency, 30% distance (e^(−miles/5)), 20% capacity fit, 15% transport — every factor shown as a bar on screen, with a plain-English "why." Each completed match produces an impact receipt: meals, pounds (×1.2, Feeding America's conversion), value (×$3.52, Iowa's average meal cost), and a potential enhanced-tax-deduction estimate (IRC §170(e)(3) math — $3,660.80/yr for a weekly 40-meal donor).
 
+Because the 2023 Food Donation Improvement Act protects donors giving **directly to households**, small prepared-food surpluses can take the direct route — warm shelf to warm table, no cooling-window risk — shown as its own match candidate with an FDIA-2023 badge. And the Needs Board ships with a **live Network Pulse** panel plus one-tap **open JSON export**, so the network reports on itself — the challenge's "data collection, reporting, and collaboration" bullet, working in the demo.
+
+## AI that shows its work
+FoodLink's AI layer is bring-your-own free/open-source: a **local Ollama model** (open-source weights, on-device, $0) or free-tier keys for Groq / Gemini / OpenRouter. The prompts are **versioned, documented (PROMPTS.md), and viewable inside the app** — grounded in live inventory JSON, hard-ruled against hallucination ("only offer food that appears in LIVE INVENTORY"), dignity-first, with crisis escalation to 211. Machine outputs are strict validated JSON with an offline template fallback, and the AI never computes matches — scores are engine math (tested); the AI only rephrases explanations from engine-computed facts, labeled "AI-phrased · engine-computed" on screen.
+
+## Rubric mapping
+| Criterion | Evidence in the product |
+|---|---|
+| Community impact (30%) | 7.4% of Polk County's entire meal gap from a 200-business slice at 10% capture (Wolfram-verified model); 9 of dsmHack's 28 factors addressed; household-facing + SMS reach |
+| Innovation (20%) | Only product combining real-time matching + demand-side needs board + any-phone multilingual assistant + FDIA-2023 direct-to-household routing |
+| Technical execution (20%) | 22 automated engine tests; gates + explainable scoring; 100k-draw Monte Carlo robustness; validated AI with offline fallback; headless end-to-end tests |
+| Feasibility (15%) | $1,300/yr operating budget; prize funds ~3.8 years; integration-first posture with DMARC / Supply Hive / Food Bank of Iowa; IEDA funding runway |
+| UX (10%) | Two buttons; one-sentence posting; honest auto-expiring cards; Spanish; installable web app |
+| Presentation (5%) | The app is the storyboard — every screen demos one beat |
+
 ## How we built it
 Static, mobile-first web app (HTML/CSS/vanilla JS — no build step), so judges click a link and it just works. The matching engine, parser, and explanation generator are pure functions with **22 automated tests** (`test/engine.test.mjs`). The ranking is stress-tested: the #1 match *dominates* the runner-up on every factor (so it wins under 100% of possible weightings) and holds ~97% against the third candidate in a 100,000-draw Monte Carlo over random weight vectors — we didn't just tune weights, we proved the ranking is robust to them. Design iterated through screen renders scored by a local vision-based taste model.
 

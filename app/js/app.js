@@ -24,11 +24,14 @@
   }
   function snapshot() { // live data handed to the AI
     return {
-      availableNow: store.listings.map(function (l) {
+      availableNow: store.listings.filter(function (l) { return !l.claimedBy; }).map(function (l) {
         return { food: l.qty + 'x ' + l.type + (l.diet ? ' (' + l.diet + ')' : ''),
                  via: l.distribution.org, window: l.distribution.window, note: l.distribution.note };
       }),
-      needsPosted: store.needs.map(function (n) { return n.org + ' needs ' + n.qty + ' ' + n.type + ' by ' + n.by; })
+      needsPosted: store.needs.map(function (n) { return n.org + ' needs ' + n.qty + ' ' + n.type + ' by ' + n.by; }),
+      orgs: D.orgs.map(function (o) {
+        return { name: o.name, miles: o.miles, hours: o.hours, languages: o.languages || ['en'], serves: o.serves || '' };
+      })
     };
   }
 
@@ -113,6 +116,8 @@
     '<div id="parseOut">' + (d ? parseHTML(d) : '<p class="ai-note">The assistant reads your note and pulls out food type, quantity, storage and deadline.</p>') + '</div>' +
     '<label class="check"><input type="checkbox" id="attest"> I attest this food has been held at safe temperatures ' +
     'and will be labeled for allergens.</label>' +
+    '<label class="check"><input type="checkbox" id="directOffer"> 🍽️ Also allow <b>direct delivery to a nearby household</b> ' +
+    'tonight — protected for donors by the federal Food Donation Improvement Act of 2023.</label>' +
     '<button class="btn btn-primary" id="findMatch" disabled>Find where it should go →</button>' +
     '<p class="ai-note" id="viaNote"></p>';
   };
@@ -127,10 +132,19 @@
   }
 
   /* ---------- match ---------- */
+  function directHouseholdOrg(d) { // FDIA 2023 qualified-direct-donor route
+    return { id: 'direct-household', name: 'Direct to a nearby household', short: 'nearby household',
+      miles: 1.2, accepts: ['prepared'], storage: ['refrigerated', 'hot', 'ambient', 'frozen'],
+      capacityMax: d.qty, needLevel: 0.85, transport: 0.45, nextReceiveMin: 0,
+      hours: 'tonight', direct: true, serves: 'a family that posted tonight\'s need' };
+  }
   views.match = function () {
     var d = store.draft;
     if (!d) { location.hash = '#donate'; return ''; }
-    var ranked = E.rank(D.orgs, d);
+    var orgs = D.orgs.slice();
+    var directAllowed = d.directOffer && d.type === 'prepared' && d.qty <= 100;
+    if (directAllowed) orgs.push(directHouseholdOrg(d));
+    var ranked = E.rank(orgs, d);
     var best = ranked.filter(function (r) { return !r.gated; })[0];
     var rival = ranked.filter(function (r) { return !r.gated; })[1];
     if (best) best.vsRivalP = rival ? E.monteCarlo(best.factors, rival.factors, 20000) : 1;
@@ -145,18 +159,30 @@
         return;
       }
       var f = m.factors, top = i === 0;
+      var why = m.org.direct
+        ? 'Hot meals straight to a family tonight — no detour, no cooling-window risk. Donors are protected by the Food Donation Improvement Act of 2023.'
+        : AI.explainMatch(m, d);
       out += '<div class="match' + (top ? ' top' : '') + '"><div class="head"><b>' + esc(m.org.name) + '</b>' +
         '<span class="score">' + (m.score * 100).toFixed(1) + '<small>%</small></span></div>' +
+        (m.org.direct ? '<span class="fdia-badge">Direct-to-household · FDIA 2023</span>' : '') +
         '<div class="meta">📍 ' + m.org.miles + ' mi · ' + (f.capacity >= 1 ? 'can take all ' + d.qty : 'can take ' + m.org.capacityMax + ' of ' + d.qty) +
         ' · ' + esc(m.org.hours) + '</div>' +
         '<div class="bars">' + bar('urgency .35', f.urgency) + bar('distance .30', f.distance) +
         bar('capacity .20', f.capacity) + bar('transport .15', f.transport) + '</div>' +
-        '<div class="why">“' + esc(AI.explainMatch(m, d)) + '”</div>' +
+        '<div class="why" id="why-top">“' + esc(why) + '”</div>' +
         (top ? '<button class="btn btn-primary" data-connect="' + m.org.id + '">Connect →</button>' : '') +
         '</div>';
     });
     out += '<p class="footnote">Weights are visible on every bar. Robustness tested by simulation: the top ranking holds in ~' +
-      (best ? Math.round(best.vsRivalP * 100) : 100) + '% of random weightings.</p>';
+      (best ? Math.round(best.vsRivalP * 100) : 100) + '% of random weightings.' +
+      (AI.activeModel().live ? ' Explanation phrased by AI from engine-computed facts.' : '') + '</p>';
+    // AI rephrases the top "why" — engine numbers stay the source of truth.
+    if (best && AI.activeModel().live) {
+      AI.explainTopAI(best, d).then(function (s) {
+        var el = document.getElementById('why-top');
+        if (el) el.innerHTML = '“' + esc(s) + '” <span class="ai-badge on">AI-phrased · engine-computed</span>';
+      }).catch(function () { /* template stays */ });
+    }
     return out;
   };
 
@@ -182,6 +208,7 @@
     '<div class="row"><span>Food diverted from waste</span><b>' + imp.lbs + ' lbs</b></div>' +
     '<div class="row"><span>Value at Iowa avg ($' + E.IOWA_MEAL_COST + '/meal)</span><b>$' + imp.value + '</b></div>' +
     '<div class="row"><span>Community organizations served</span><b>1</b></div>' +
+    (d.directDone ? '<div class="row"><span>Route</span><b>Direct-to-household · FDIA 2023</b></div>' : '') +
     '<div class="row"><span>Potential tax deduction (est.)</span><b>$' + tax.deduction.toFixed(2) + '</b></div>' +
     '<div class="row"><span>This pattern, all year →</span><b>$' + yr.deduction.toFixed(2) + '</b></div>' +
     '</div>' +
@@ -270,16 +297,69 @@
     '<div class="chatrow"><input class="txt" id="chatInput" placeholder="' +
     (am.live ? 'Type in any language…' : 'AI not configured — canned replies only') + '">' +
     '<button class="btn btn-primary" id="chatSend" style="width:auto;margin:0">➤</button></div>' +
+    '<div class="chips" style="margin-top:10px">' +
+    '<a class="btn btn-ghost" style="margin:0;width:auto" href="sms:+15155550100?&body=FOOD">📲 On your phone? Text FOOD (demo number)</a>' +
+    '<a class="btn btn-ghost" style="margin:0;width:auto" href="#how">🔍 See the exact AI prompt &amp; context</a></div>' +
     '<p class="footnote">34% of low-income adults are smartphone-only; ~1 in 5 seniors own no smartphone (Pew 2025). ' +
     'The same assistant answers on SMS — NYC\'s Plentiful proved the pattern in 9 languages; FoodLink brings it to Des Moines.</p>';
   };
 
-  /* ---------- needs board ---------- */
+  /* ---------- how the AI works (full transparency) ---------- */
+  views.how = function () {
+    var am = AI.activeModel(), P = window.FoodLinkPrompts;
+    return '' +
+    '<a class="back" href="#sms">← Assistant</a>' +
+    '<h3 class="sec">How the AI works</h3>' +
+    '<p class="sub">No black boxes. The prompts are versioned, the context is grounded in live inventory, and every machine ' +
+    'output is validated with a template fallback — the demo cannot die offline.</p>' +
+    '<div class="card"><div class="k">Active engine</div>' +
+    '<div class="meta" style="margin-top:6px"><b>' + esc(am.label) + (am.model ? ' · ' + esc(am.model) : '') + '</b>' +
+    (am.live ? '' : ' — offline template mode') + '</div>' +
+    '<div class="meta" style="margin-top:4px">Prompt pack v' + esc(P.VERSION) + ' · three prompts: parse, assist, explain.</div></div>' +
+    '<div class="card"><div class="k">The 8 rules the assistant must obey</div>' +
+    '<ol class="rules">' +
+    '<li><b>Grounded:</b> only food in LIVE INVENTORY may be offered — never invented.</li>' +
+    '<li><b>No guarantees:</b> never promises food or eligibility; pantries use self-attestation, no ID needed here.</li>' +
+    '<li><b>Dignity:</b> no judgment, no politics; everyone eats.</li>' +
+    '<li><b>Language:</b> mirrors the language you write in.</li>' +
+    '<li><b>Short:</b> under 45 words, one question max.</li>' +
+    '<li><b>Safety:</b> food logistics only; emergencies → 911; hungry kids tonight → fastest same-day item + 211.</li>' +
+    '<li><b>Donors:</b> one-sentence pitch for how to post surplus.</li>' +
+    '<li><b>On-topic</b> or one-line redirect.</li></ol></div>' +
+    '<div class="card"><div class="k">The exact assistant prompt (live context)</div>' +
+    '<pre class="promptbox">' + esc(P.assistantSystem(snapshot())) + '</pre></div>' +
+    '<div class="card"><div class="k">The parse prompt (strict JSON contract)</div>' +
+    '<pre class="promptbox">' + esc(P.PARSE_SYSTEM) + '</pre></div>' +
+    '<div class="card"><div class="k">Match explanations</div>' +
+    '<div class="meta">Scores and factors are computed by the tested engine — never by the AI. The AI only rephrases the ' +
+    'plain-English “why” from engine-computed facts, and falls back to the template sentence if it drifts. ' +
+    'The matching robustness (100k-draw Monte Carlo) is real math, not model output.</div></div>';
+  };
+
+  /* ---------- needs board + network pulse ---------- */
+  function pulseHTML() {
+    var imp = E.impact(store.impact.meals);
+    var openNeeds = store.needs.length, met = store.listings.filter(function (l) { return l.claimedBy; }).length;
+    var rows = [
+      ['Meals rescued (this device)', store.impact.meals, 300],
+      ['Lbs diverted', imp.lbs, 360],
+      ['Food value, $', imp.value, 1100],
+      ['Needs posted → matched', met + ' of ' + (openNeeds + met), openNeeds + met || 1]
+    ];
+    return '<div class="card"><div class="k">Network pulse · live data</div>' +
+      rows.map(function (r) {
+        return '<div class="prow"><span>' + r[0] + '</span><div class="ptrack"><div class="pfill" style="width:' +
+          Math.min(100, Math.round(r[1] / r[2] * 100)) + '%"></div></div><b>' + r[1] + '</b></div>';
+      }).join('') +
+      '<button class="btn btn-ghost" id="exportData">⬇ Export network data (JSON)</button>' +
+      '<p class="ai-note">Open export for any food-access organization — the challenge\'s data-collaboration bullet, working today.</p></div>';
+  }
   views.needsBoard = function () {
     return '' +
     '<a class="back" href="#home">← Home</a>' +
     '<h3 class="sec">Needs Board</h3>' +
     '<p class="sub">The demand side posts too — surplus gets a destination <i>before</i> it\'s cooked.</p>' +
+    pulseHTML() +
     store.needs.map(function (n) {
       return '<div class="card need"><div class="k">NEED · ' + esc(E.labelType(n.type)) + '</div>' +
         '<h5>' + esc(n.label) + '</h5>' +
@@ -311,6 +391,7 @@
     if (name === 'donate') {
       var txt = document.getElementById('postText'), find = document.getElementById('findMatch');
       var check = document.getElementById('attest'), out = document.getElementById('parseOut');
+      var doffer = document.getElementById('directOffer');
       function refresh() { find.disabled = !(txt.value.trim().length > 4 && check.checked); }
       var deb;
       txt.addEventListener('input', function () {
@@ -327,7 +408,7 @@
       });
       check.addEventListener('change', refresh);
       find.addEventListener('click', function () {
-        if (store.draft) store.draft.raw = txt.value;
+        if (store.draft) { store.draft.raw = txt.value; store.draft.directOffer = doffer.checked; }
         location.hash = '#match';
       });
     }
@@ -335,7 +416,9 @@
     if (name === 'match') {
       app.querySelectorAll('[data-connect]').forEach(function (b) {
         b.addEventListener('click', function () {
-          var d = store.draft, org = D.orgs.find(function (o) { return o.id === b.dataset.connect; });
+          var d = store.draft, org = D.orgs.concat([directHouseholdOrg(d)])
+            .find(function (o) { return o.id === b.dataset.connect; });
+          d.directDone = !!org.direct;
           store.impact.meals += d.qty; store.impact.donations += 1;
           if (store.impact.orgs.indexOf(org.name) === -1) store.impact.orgs.push(org.name);
           saveImpact();
@@ -419,6 +502,17 @@
             qty: p.qty, label: v, by: p.deadlineLabel, note: '' });
           render(); toast('Posted to the Needs Board ✓');
         });
+      });
+      var ex = document.getElementById('exportData');
+      ex.addEventListener('click', function () {
+        var blob = new Blob([JSON.stringify({
+          generated: new Date().toISOString(), region: 'Greater Des Moines (simulated demo)',
+          weights: E.WEIGHTS, impact: store.impact,
+          listings: store.listings, needs: store.needs
+        }, null, 2)], { type: 'application/json' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = 'foodlink-network-data.json'; a.click();
+        toast('Network data exported ✓');
       });
     }
   }

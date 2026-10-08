@@ -132,10 +132,12 @@
   var TYPE_ENUM = ['prepared', 'produce', 'bakery', 'dairy', 'shelf-stable', 'frozen'];
   function parseDonationSmart(text) {
     var fallback = parseDonation(text);
+    var P = (typeof root !== 'undefined' && root.FoodLinkPrompts) || null;
+    var system = P ? P.PARSE_SYSTEM :
+      'Extract JSON {type: prepared|produce|bakery|dairy|shelf-stable|frozen, qty: number, diet: string, ' +
+      'storage: refrigerated|frozen|hot|ambient, deadlineMinFromNow: number}. Reply with ONLY the JSON.';
     return chat([
-      { role: 'system', content: 'Extract structured data from a food-donation note. Reply with ONLY a JSON object: ' +
-        '{"type":"prepared|produce|bakery|dairy|shelf-stable|frozen","qty":number,"diet":"vegetarian|vegan|halal|kosher|gluten-free|",' +
-        '"storage":"refrigerated|frozen|hot|ambient","deadlineMinFromNow":number}. No prose.' },
+      { role: 'system', content: system },
       { role: 'user', content: text }
     ], { maxTokens: 120 }).then(function (t) {
       var p = extractJSON(t), out = Object.assign({}, fallback);
@@ -171,6 +173,8 @@
 
   /* ---------- 3. live conversational assistant (the any-phone brain) ---------- */
   function systemPrompt(snapshot) {
+    var P = (typeof root !== 'undefined' && root.FoodLinkPrompts) || null;
+    if (P && P.assistantSystem) return P.assistantSystem(snapshot);
     return 'You are FoodLink\'s text assistant for Greater Des Moines food access. ' +
       'Rules: reply in the SAME LANGUAGE the person writes in; keep replies under 45 words, SMS-style, warm, no jargon. ' +
       'Never guarantee food or promise eligibility; pantries use self-attestation. Point people to the distribution windows listed. ' +
@@ -179,6 +183,20 @@
   }
   function assistantReply(history, snapshot) {
     return chat([{ role: 'system', content: systemPrompt(snapshot) }].concat(history), { maxTokens: 200 });
+  }
+
+  /* AI rephrases the engine's match explanation — numbers stay engine-computed. */
+  function explainTopAI(match, donation) {
+    var P = (typeof root !== 'undefined' && root.FoodLinkPrompts);
+    if (!P) return Promise.reject(new Error('no-prompts'));
+    return chat([
+      { role: 'system', content: P.EXPLAIN_SYSTEM },
+      { role: 'user', content: P.explainUser(match, donation) }
+    ], { maxTokens: 80 }).then(function (t) {
+      var s = String(t).trim().replace(/^["“]+|["”]+$/g, '');
+      if (s.length < 10 || s.length > 200) throw new Error('bad explain');
+      return s;
+    });
   }
 
   /* ---------- canned fallback script (offline demo mode) ---------- */
@@ -197,6 +215,7 @@
     DEFAULTS: DEFAULTS, getConfig: getConfig, setConfig: setConfig, activeModel: activeModel,
     chat: chat, testConnection: testConnection, extractJSON: extractJSON,
     parseDonation: parseDonation, parseDonationSmart: parseDonationSmart,
-    explainMatch: explainMatch, assistantReply: assistantReply, smsScript: smsScript, labelType: labelType
+    explainMatch: explainMatch, assistantReply: assistantReply, explainTopAI: explainTopAI,
+    smsScript: smsScript, labelType: labelType
   };
 });

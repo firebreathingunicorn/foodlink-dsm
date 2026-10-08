@@ -24,15 +24,18 @@ node test/smoke.mjs           # headless-browser click-through (needs `python3 -
 ## Structure
 
 ```
-app/            the product (static, mobile-first web app)
+app/            the product (static, mobile-first, installable web app)
   js/engine.js  matching engine — hard gates + explainable score (pure, Node-loadable)
+  js/prompts.js versioned AI prompts (grounded context, JSON contracts, safety rules)
   js/data.js    simulated orgs/listings/needs seed
-  js/ai.js      donation parser, explanation generator, SMS demo script (offline template fallback)
+  js/ai.js      multi-provider LLM layer (Ollama/Groq/Gemini/OpenRouter + offline fallback)
   js/i18n.js    EN/ES household strings
-  js/app.js     hash-routed views
-designs/        approved HTML mockup + rendered screens + scoring run
-test/           engine self-tests + end-to-end smoke test
+  js/app.js     hash-routed views incl. prompt-transparency screen
+designs/        approved HTML mockup + rendered screens + scoring runs
+test/           engine, prompt-layer, and end-to-end tests
 PLAN-v2.md      the full researched plan (data sources, landscape analysis, math)
+PROMPTS.md      AI prompt engineering notes
+VIDEO.md        3-minute demo script (rubric-mapped)
 DEVPOST.md      submission copy
 ```
 

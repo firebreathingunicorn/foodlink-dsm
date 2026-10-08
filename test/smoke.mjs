@@ -23,7 +23,7 @@ await page.goto('http://localhost:8123/#settings');
 await page.waitForTimeout(300);
 await page.screenshot({ path: path.join(outDir, 'app-02-settings.png'), fullPage: true });
 
-// donate flow (async parse: wait for the debounced preview)
+// donate flow (async parse: wait for the debounced preview) + direct-to-household option
 await page.goto('http://localhost:8123/#donate');
 await page.waitForTimeout(300);
 await page.fill('#postText', '40 vegetarian prepared meals, refrigerated, need gone by 7pm');
@@ -31,9 +31,12 @@ await page.waitForTimeout(800); // debounce 350ms + parse
 const parsed = await page.locator('.parsed').count();
 if (!parsed) errors.push('parse preview did not render');
 await page.check('#attest');
+await page.check('#directOffer');
 await page.screenshot({ path: path.join(outDir, 'app-03-post.png') });
 await page.click('#findMatch');
 await page.waitForTimeout(700);
+const fdia = await page.locator('.fdia-badge').count();
+if (!fdia) errors.push('direct-to-household candidate missing');
 await page.screenshot({ path: path.join(outDir, 'app-04-match.png'), fullPage: true });
 
 // connect -> receipt
@@ -67,13 +70,21 @@ const replyCount = await page.locator('.sms').count();
 if (replyCount < 2) errors.push('chat did not produce a reply');
 await page.screenshot({ path: path.join(outDir, 'app-08-chat.png'), fullPage: true });
 
-// needs board
+// needs board + network pulse + data export + prompt transparency
 await page.goto('http://localhost:8123/#needs-board');
 await page.waitForTimeout(300);
+const pulse = await page.locator('#exportData').count();
+if (!pulse) errors.push('network pulse / export missing');
 await page.fill('#needText', 'We need 30 halal meals Friday night');
 await page.click('#postNeed');
 await page.waitForTimeout(600);
 await page.screenshot({ path: path.join(outDir, 'app-09-needs-board.png'), fullPage: true });
+
+await page.goto('http://localhost:8123/#how');
+await page.waitForTimeout(300);
+const promptbox = await page.locator('.promptbox').count();
+if (promptbox < 2) errors.push('prompt transparency view missing');
+await page.screenshot({ path: path.join(outDir, 'app-10-how.png'), fullPage: true });
 
 await browser.close();
 console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'no JS errors — flow complete');
