@@ -16,6 +16,26 @@ page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.
 
 await page.goto('http://localhost:8123/#home');
 await page.waitForTimeout(500);
+
+// first-run welcome overlay → take the tour
+const welcome = page.locator('#welcome');
+if (await welcome.count() === 0) errors.push('welcome overlay missing on first run');
+await page.screenshot({ path: path.join(outDir, 'app-00-welcome.png') });
+await page.click('[data-w="tour"]');
+await page.waitForTimeout(400);
+for (let s = 0; s < 7; s++) {
+  const next = page.locator('[data-tour="next"]');
+  if (await next.count() === 0) { errors.push('tour bar missing at step ' + s); break; }
+  if (s === 1) await page.screenshot({ path: path.join(outDir, 'app-00b-tour-donate.png') });
+  if (s === 2) { // match step: connect button must exist via ensureDraft
+    if (await page.locator('[data-connect]').count() === 0) errors.push('tour: no connect button at match step');
+    await page.screenshot({ path: path.join(outDir, 'app-00c-tour-match.png') });
+  }
+  await next.click();
+  await page.waitForTimeout(450);
+}
+const tourGone = await page.locator('.tourbar').count();
+if (tourGone > 0) errors.push('tour did not finish');
 await page.screenshot({ path: path.join(outDir, 'app-01-home.png') });
 
 // settings drawer (AI provider)
