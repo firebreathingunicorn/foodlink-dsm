@@ -105,21 +105,21 @@
       { name: '211 Iowa — any need, 24/7', addr: 'Statewide helpline', phone: '211 · 800-244-7431 · text ZIP to 898211',
         hours: 'phone 24/7 · chat 7am–10pm', src: 'https://211iowa.org' },
       { name: 'DMARC home food delivery', addr: 'Des Moines metro — delivered to your door', phone: '1-833-362-7220',
-        hours: 'call Mon–Wed 9am–noon · deliveries Thursdays', src: 'https://dmarcunited.org/get-help/delivery/' },
+        lat: 41.526379, lng: -93.617538, hours: 'call Mon–Wed 9am–noon · deliveries Thursdays', src: 'https://dmarcunited.org/get-help/delivery/' },
       { name: 'West Des Moines Human Services Pantry (DMARC)', addr: '139 6th St, West Des Moines', phone: '(515) 222-3660',
-        hours: 'Mon/Thu 8:30–3 · Tue 8:30–3 + 4:30–6:30 · Wed/Fri 8:30–12', src: 'https://www.wdm.iowa.gov/government/human-services/programs-services/food-personals' },
+        lat: 41.570192, lng: -93.710199, hours: 'Mon/Thu 8:30–3 · Tue 8:30–3 + 4:30–6:30 · Wed/Fri 8:30–12', src: 'https://www.wdm.iowa.gov/government/human-services/programs-services/food-personals' },
       { name: 'Polk County River Place Food Pantry', addr: '2309 Euclid Ave, Des Moines', phone: '(515) 286-3695',
-        hours: 'Mon–Fri 8am–4:30pm', src: 'https://www.polkcountyiowa.gov/community-family-youth-services/community-and-family/polk-county-food-pantries' },
+        lat: 41.627733, lng: -93.646096, hours: 'Mon–Fri 8am–4:30pm', src: 'https://www.polkcountyiowa.gov/community-family-youth-services/community-and-family/polk-county-food-pantries' },
       { name: 'Johnston Partnership — Partnership Place', addr: '5870 Merle Hay Rd, Johnston', phone: '(515) 528-2379',
-        hours: 'Tue 9–1 & 4–6 · Thu 9–1 · Sat 9–1', src: 'https://www.johnstonpartnership.org/' },
+        lat: 41.667122, lng: -93.69774, hours: 'Tue 9–1 & 4–6 · Thu 9–1 · Sat 9–1', src: 'https://www.johnstonpartnership.org/' },
       { name: 'Urbandale Food Pantry', addr: '7901 Douglas Ave, Urbandale', phone: '(515) 251-6688',
-        hours: 'Mon–Thu 9:30–6:15 · Sat 8–11:45', src: 'https://urbandalefoodpantry.org/contact' },
+        lat: 41.629396, lng: -93.726857, hours: 'Mon–Thu 9:30–6:15 · Sat 8–11:45', src: 'https://urbandalefoodpantry.org/contact' },
       { name: 'Eastview Food Pantry', addr: '4101 E 42nd St, Des Moines', phone: 'see website',
-        hours: 'Tue–Wed 2–5 · Thu 10–12 · Fri 10–2', src: 'http://www.eastviewcc.com/eastview-food-pantry' },
+        lat: 41.634304, lng: -93.532027, hours: 'Tue–Wed 2–5 · Thu 10–12 · Fri 10–2', src: 'http://www.eastviewcc.com/eastview-food-pantry' },
       { name: 'Food Bank of Iowa (main facility)', addr: '2220 E 17th St, Des Moines', phone: '(515) 564-0330',
-        hours: 'office Mon–Thu 7:30–4:30 · Fri 7:30–2', src: 'https://foodbankiowa.org/find-food' },
+        lat: 41.614357, lng: -93.591134, hours: 'office Mon–Thu 7:30–4:30 · Fri 7:30–2', src: 'https://foodbankiowa.org/find-food' },
       { name: 'Eat Greater Des Moines', addr: '501 SW 7th St Suite G, Des Moines', phone: '(515) 207-8908',
-        hours: 'weekday office hours', src: 'https://www.eatgreaterdesmoines.org/contact-us' }
+        lat: 41.578404, lng: -93.623100, hours: 'weekday office hours', src: 'https://www.eatgreaterdesmoines.org/contact-us' }
     ]
   };
 

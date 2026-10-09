@@ -3,28 +3,155 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="description" content="FoodLink — the real-time food grid for Greater Des Moines. Surplus food and real need, matched with an explainable score, reachable from any phone.">
-<meta name="theme-color" content="#14532d">
+<meta name="description" content="Xenia connects Des Moines stores and restaurants that have extra food with the pantries and families who need it.">
+<meta name="theme-color" content="#16201a">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
-<title>FoodLink · Des Moines</title>
+<title>Xenia · Extra food, to the people who need it · Des Moines</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="sim-banner" id="simBanner">DEMO · ALL DATA SIMULATED · no real organizations have onboarded</div>
-<div id="app" class="wrap" aria-live="polite"></div>
-<nav class="tabbar" id="tabbar">
-  <a href="#home" data-tab="home"><span>🌽</span>Home</a>
-  <a href="#need" data-tab="need"><span>🍅</span>Find food</a>
-  <a href="#needs-board" data-tab="needs-board"><span>📢</span>Needs</a>
-  <a href="#donate" data-tab="donate"><span>🏪</span>Give food</a>
-</nav>
+<p class="notice">Hackathon prototype. The pantry list is real. The food postings are examples — no store has signed up yet.</p>
+
+<header class="top">
+  <a class="brand" href="#top"><span class="logo" data-ic="grid"></span>Xenia</a>
+  <nav>
+    <a href="#find">Find food</a>
+    <a href="#give">Give food</a>
+    <a href="#needs">What pantries need</a>
+    <a href="#time">Give time</a>
+  </nav>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Greater Des Moines</p>
+      <h1>Good food gets thrown out every night. <em>Families nearby go without.</em></h1>
+      <p class="lede">Xenia connects the two. A store or restaurant posts its extra food in one sentence. Xenia finds the pantry that can safely take it, and neighbors see where to pick it up. Always free.</p>
+      <div class="cta">
+        <a class="btn solid" href="#find">I need food</a>
+        <a class="btn line" href="#give">I have extra food</a>
+        <a class="btn line" href="#time">I have time</a>
+      </div>
+      <p class="namenote"><i>Xenia</i> (ZEE-nee-uh): the ancient Greek custom of feeding whoever comes to your door.</p>
+    </div>
+    <ol class="steps">
+      <li><b>A store posts it</b><span>"40 vegetarian meals, refrigerated, need gone by 7pm." That is the whole form.</span></li>
+      <li><b>Xenia finds the pantry that asked for it</b><span>Pantries post what they're short on. Xenia rules out places that can't store the food or aren't open in time, then ranks the rest by need and distance.</span></li>
+      <li><b>Neighbors pick it up</b><span>The food shows up below with where and when. No sign-up, no ID, no cost.</span></li>
+    </ol>
+  </section>
+
+  <section class="facts" aria-label="The numbers">
+    <div><b>402,340</b><span>Iowans don't know where their next meal will come from. That is 1 in 8.</span></div>
+    <div><b>60,300</b><span>of them live in Polk County, including 20,430 children.</span></div>
+    <div><b>76 million</b><span>meals a year is the gap between what Iowans need and what they can get.</span></div>
+    <div><b>30–40%</b><span>of the food supply in the United States is never eaten.</span></div>
+    <p class="hint">Sources: Feeding America, Map the Meal Gap, as reported by <a href="https://foodbankiowa.org/news/latest-map-the-meal-gap-more-than-402000-iowans-experience-food-insecurity" target="_blank" rel="noopener">Food Bank of Iowa</a>; <a href="https://www.usda.gov/about-food/food-safety/food-loss-and-waste" target="_blank" rel="noopener">USDA</a>.</p>
+  </section>
+
+  <section id="find">
+    <div class="sechead">
+      <h2>Find free food</h2>
+      <p>No account. Nobody asks for documents here.</p>
+    </div>
+
+    <h3>Posted on Xenia right now <span class="tag ex">example postings</span></h3>
+    <div class="cards" id="listings"></div>
+
+    <h3>Food pantries you can go to this week <span class="tag real">real places</span></h3>
+    <p class="hint">Hours come from each pantry's own website. Call first to be sure.
+      <button type="button" class="link" id="nearMe">Show the closest to me first</button> <span id="nearMsg"></span></p>
+    <div id="map" class="map" aria-label="Map of food pantries in Greater Des Moines"></div>
+    <div class="cards" id="directory"></div>
+    <p class="hint more">More: <a id="lnkDmarc" target="_blank" rel="noopener">all DMARC pantries</a> · <a id="lnkFbi" target="_blank" rel="noopener">Food Bank of Iowa finder</a> · or call <a href="tel:211">211</a> any time.</p>
+  </section>
+
+  <section id="give">
+    <div class="sechead">
+      <h2>Give extra food</h2>
+      <p>For stores, restaurants, caterers and schools. Try it — this is a working demo.</p>
+    </div>
+    <div class="give">
+      <form id="giveForm" onsubmit="return false">
+        <label for="postText">What do you have?</label>
+        <textarea id="postText" placeholder="40 vegetarian prepared meals, refrigerated, need gone by 7pm"></textarea>
+        <button type="button" class="link" id="useExample">Use the example</button>
+        <div id="parseOut"></div>
+        <label class="photo" for="photo"><span id="photoLabel">Add a photo of the food (optional)</span>
+          <input type="file" id="photo" accept="image/*" capture="environment"></label>
+        <img id="photoPrev" class="photoprev" alt="Your photo of the food" hidden>
+        <label class="check"><input type="checkbox" id="attest"> This food was kept at a safe temperature and will be labeled for allergens.</label>
+        <button class="btn solid wide" id="findMatch" disabled>Find where it should go</button>
+        <p class="hint">Donating in good faith is protected by the federal Bill Emerson Good Samaritan Act and Iowa Code §672.1.</p>
+      </form>
+      <div id="matchOut" class="matchout">
+        <div class="empty">
+          <b>What happens next</b>
+          <p>Xenia checks eight pantries and kitchens. You'll see which ones can take your food, which can't and why, and the score behind the top pick.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="needs">
+    <div class="sechead">
+      <h2>What pantries need</h2>
+      <p>Most food-rescue tools only let the giver speak. Here pantries ask first, and each donation counts toward the request it answers.</p>
+    </div>
+    <div class="cards" id="needList"></div>
+    <form class="needform" onsubmit="return false">
+      <label for="needText">Run a pantry? Post a need.</label>
+      <div class="row">
+        <input id="needText" placeholder="We need 30 halal meals Friday night">
+        <button class="btn solid" id="postNeed">Post</button>
+      </div>
+    </form>
+  </section>
+  <section id="time">
+    <div class="sechead">
+      <h2>Give time</h2>
+      <p>Food doesn't move itself. Stores, pantries and the city post jobs that need hands. Anyone can take one. Nobody has to work to eat.</p>
+    </div>
+    <h3>Jobs open now <span class="tag ex">example postings</span></h3>
+    <div class="cards" id="jobList"></div>
+    <form class="needform" onsubmit="return false">
+      <label for="jobText">Need hands? Post a job.</label>
+      <div class="row">
+        <input id="jobText" placeholder="Two people to unload a truck at our pantry, Friday 3 PM">
+        <button class="btn solid" id="postJob">Post</button>
+      </div>
+    </form>
+  </section>
+</main>
+
+<footer>
+  <div>
+    <b>Xenia</b>
+    <p><i>Xenia</i> (ZEE-nee-uh) is the ancient Greek custom of feeding whoever comes to your door. Built for Hack Away Hunger (dsmHack, presented by Corteva Agriscience), October 2026.</p>
+  </div>
+  <div>
+    <b>What is real here</b>
+    <p>The pantry list, phone numbers and hours are real and public. The stores, the postings and the eight pantries in the matching demo are made-up examples. No partnership with any named organization is claimed.</p>
+  </div>
+  <div>
+    <b>More</b>
+    <p><a href="https://github.com/firebreathingunicorn/foodlink-dsm" target="_blank" rel="noopener">Source code</a><br>Tax figures are estimates, not tax advice.</p>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/data.js"></script>
 <script src="js/prompts.js"></script>
 <script src="js/ai.js"></script>
-<script src="js/i18n.js"></script>
+<script src="js/icons.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
