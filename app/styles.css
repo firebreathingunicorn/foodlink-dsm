@@ -172,3 +172,5 @@ footer b{color:var(--ink);display:block;margin-bottom:4px}
 .photoprev{display:block;width:100%;max-height:220px;object-fit:cover;border-radius:8px;margin-top:10px;border:1px solid var(--line)}
 .cardphoto{width:calc(100% + 36px);margin:-18px -18px 14px;height:150px;object-fit:cover;border-radius:9px 9px 0 0}
 #time .src{color:var(--ink);font-weight:600}
+
+img.logo{display:block;width:34px;height:34px;border-radius:8px;background:none}
