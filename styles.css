@@ -174,3 +174,5 @@ footer b{color:var(--ink);display:block;margin-bottom:4px}
 #time .src{color:var(--ink);font-weight:600}
 
 img.logo{display:block;width:34px;height:34px;border-radius:0;background:none}
+
+.photoprev[hidden]{display:none}
