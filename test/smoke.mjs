@@ -17,6 +17,7 @@ for (const [name, viewport] of [['desktop', { width: 1280, height: 800 }], ['pho
   page.on('console', m => { if (m.type() === 'error') errors.push(name + ' console: ' + m.text()); });
   await page.goto('http://localhost:8123/');
   await page.waitForTimeout(2500);
+  if (await page.locator('#photoPrev').isVisible()) errors.push(name + ': empty photo box is showing before a photo is chosen');
   if (await page.locator('#directory .card').count() < 6) errors.push(name + ': pantry list missing');
   if (await page.locator('#directory a[href^="tel:"]').count() < 6) errors.push(name + ': call links missing');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
