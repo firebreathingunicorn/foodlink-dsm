@@ -1,6 +1,6 @@
 {
-  "name": "FoodLink — Des Moines food grid",
-  "short_name": "FoodLink",
+  "name": "Xenia — Des Moines food grid",
+  "short_name": "Xenia",
   "description": "Real-time surplus food matching for Greater Des Moines — explainable, any-phone, dignity-first.",
   "start_url": "./",
   "display": "standalone",

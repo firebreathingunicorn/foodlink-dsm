@@ -53,7 +53,8 @@ console.log('— parser —');
 const p1 = AI.parseDonation('40 vegetarian prepared meals, refrigerated, need gone by 7pm');
 ok('parses type=prepared qty=40 diet=vegetarian storage=refrigerated',
   p1.type === 'prepared' && p1.qty === 40 && p1.diet === 'vegetarian' && p1.storage === 'refrigerated', p1);
-ok('parses evening deadline (this evening ±2h)', p1.deadlineMin > 60 && p1.deadlineMin < 480, p1.deadlineMin);
+ok('parses evening deadline label (wall-clock independent)', /7/.test(p1.deadlineLabel), p1.deadlineLabel);
+ok('deadline is positive and bounded', p1.deadlineMin >= 15 && p1.deadlineMin <= 1440, p1.deadlineMin);
 const p2 = AI.parseDonation('200 lbs of mixed vegetables, ambient, tomorrow afternoon');
 ok('parses produce/200/tomorrow', p2.type === 'produce' && p2.qty === 200 && p2.deadlineMin > 600, p2);
 const p3 = AI.parseDonation('30 bread and pastries');

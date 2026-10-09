@@ -3,5 +3,12 @@
     <stop offset="0" stop-color="#16a34a"/><stop offset="1" stop-color="#14532d"/>
   </linearGradient></defs>
   <rect width="512" height="512" rx="96" fill="url(#g)"/>
-  <text x="256" y="330" font-size="240" text-anchor="middle">🌽</text>
+  <g stroke="#ffffff" stroke-width="22" stroke-linecap="round" fill="none">
+    <circle cx="160" cy="176" r="34"/>
+    <circle cx="352" cy="176" r="34"/>
+    <circle cx="160" cy="368" r="34"/>
+    <circle cx="352" cy="368" r="34"/>
+    <circle cx="256" cy="272" r="26"/>
+    <path d="M185 201 233 249M327 201l-48 48M185 343l48-48M327 343l-48-48"/>
+  </g>
 </svg>
