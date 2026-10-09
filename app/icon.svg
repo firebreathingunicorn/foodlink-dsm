@@ -1,8 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <!-- Xenia: an open doorway with a bowl set out for whoever arrives -->
-  <rect width="512" height="512" rx="104" fill="#0c3320"/>
-  <path d="M136 408V236a120 120 0 0 1 240 0v172" fill="none" stroke="#f6f2e8" stroke-width="30" stroke-linecap="round"/>
-  <path d="M184 300h144a72 72 0 0 1-144 0Z" fill="#f6f2e8"/>
-  <path d="M256 262c-16-16 16-28 0-46" fill="none" stroke="#7ee2a0" stroke-width="18" stroke-linecap="round"/>
-  <path d="M104 408h304" stroke="#f6f2e8" stroke-width="30" stroke-linecap="round"/>
+  <path d="M96 452V216a160 160 0 0 1 320 0v236" fill="none" stroke="#0c3320" stroke-width="40" stroke-linecap="round"/>
+  <path d="M160 316h192a96 96 0 0 1-192 0Z" fill="#0c3320"/>
+  <path d="M256 266c-22-22 22-38 0-62" fill="none" stroke="#1c8049" stroke-width="24" stroke-linecap="round"/>
+  <path d="M52 452h408" stroke="#0c3320" stroke-width="40" stroke-linecap="round"/>
 </svg>
